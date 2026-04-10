@@ -1,0 +1,231 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Syncopate:wght@400;700&family=Manrope:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap');
+@import "tailwindcss";
+
+.react-grid-layout {
+  position: relative;
+  transition: height 200ms ease;
+}
+.react-grid-item {
+  transition: all 200ms ease;
+  transition-property: left, top;
+}
+.react-grid-item.cssTransforms {
+  transition-property: transform;
+}
+.react-grid-item.resizing {
+  z-index: 100;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+}
+.react-grid-item.react-grid-placeholder {
+  background: rgba(34, 211, 238, 0.1) !important;
+  border: 1px dashed rgba(34, 211, 238, 0.5) !important;
+  border-radius: 8px !important;
+  opacity: 0.8 !important;
+  z-index: 2 !important;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  -o-user-select: none;
+  user-select: none;
+}
+/* Widget Background Animations */
+@keyframes gradient-flow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.bg-anim-gradient-flow {
+  background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+  background-size: 400% 400%;
+  animation: gradient-flow 15s ease infinite;
+}
+
+@keyframes clouds-move {
+  0% { background-position: 0 0; }
+  100% { background-position: 100% 0; }
+}
+
+.bg-anim-clouds {
+  background: #87CEEB;
+  background-image: 
+    radial-gradient(circle at 50% 50%, rgba(255,255,255,0.8) 0%, transparent 60%),
+    radial-gradient(circle at 20% 80%, rgba(255,255,255,0.8) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(255,255,255,0.8) 0%, transparent 50%);
+  background-size: 200% 200%;
+  animation: clouds-move 20s linear infinite;
+}
+
+@keyframes rain-fall {
+  0% { background-position: 0 0; }
+  100% { background-position: 0 100%; }
+}
+
+.bg-anim-rain {
+  background-color: #0f172a;
+  background-image: linear-gradient(to bottom, rgba(255,255,255,0.1) 1px, transparent 1px);
+  background-size: 20px 20px;
+  animation: rain-fall 1s linear infinite;
+}
+
+@keyframes snow-fall {
+  0% { background-position: 0 0, 0 0, 0 0; }
+  100% { background-position: 400px 1100px, 400px 400px, 300px 300px; }
+}
+
+.bg-anim-snow {
+  background-color: #0f172a;
+  background-image: 
+    radial-gradient(white 2px, transparent 3px),
+    radial-gradient(white 1px, transparent 2px),
+    radial-gradient(rgba(255,255,255,0.5) 2px, transparent 3px);
+  background-size: 400px 400px, 300px 300px, 200px 200px;
+  animation: snow-fall 10s linear infinite;
+}
+
+@keyframes fire-rise {
+  0% { background-position: 0% 100%; }
+  100% { background-position: 0% 0%; }
+}
+
+.bg-anim-fire {
+  background: linear-gradient(to top, #7f1d1d, #b91c1c, #ef4444, transparent);
+  background-size: 100% 200%;
+  animation: fire-rise 3s linear infinite;
+}
+
+@keyframes tech-grid-move {
+  0% { background-position: 0 0; }
+  100% { background-position: 40px 40px; }
+}
+
+.bg-anim-tech-grid {
+  background-color: #000;
+  background-image: 
+    linear-gradient(rgba(0, 255, 255, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 255, 255, 0.1) 1px, transparent 1px);
+  background-size: 40px 40px;
+  animation: tech-grid-move 4s linear infinite;
+}
+
+@keyframes pulse-red {
+  0%, 100% { background-color: rgba(220, 38, 38, 0.2); }
+  50% { background-color: rgba(220, 38, 38, 0.6); }
+}
+
+.bg-anim-pulse-red {
+  animation: pulse-red 2s ease-in-out infinite;
+}
+
+@keyframes pulse-blue {
+  0%, 100% { background-color: rgba(37, 99, 235, 0.2); }
+  50% { background-color: rgba(37, 99, 235, 0.6); }
+}
+
+.bg-anim-pulse-blue {
+  animation: pulse-blue 2s ease-in-out infinite;
+}
+
+@keyframes pulse-green {
+  0%, 100% { background-color: rgba(22, 163, 74, 0.2); }
+  50% { background-color: rgba(22, 163, 74, 0.6); }
+}
+
+.bg-anim-pulse-green {
+  animation: pulse-green 2s ease-in-out infinite;
+}
+
+@keyframes aurora-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.bg-anim-aurora {
+  background: linear-gradient(120deg, #000000, #1a2a6c, #b21f1f, #fdbb2d);
+  background-size: 400% 400%;
+  animation: aurora-shift 10s ease infinite;
+}
+
+/* --- Day/Night Weather Variations --- */
+
+/* Clear Day */
+.bg-anim-clear-day {
+  background: linear-gradient(to bottom, #38bdf8, #bae6fd);
+  background-size: 100% 100%;
+  animation: gradient-flow 20s ease infinite;
+}
+
+/* Clear Night */
+@keyframes twinkle {
+  0%, 100% { opacity: 0.8; }
+  50% { opacity: 0.4; }
+}
+.bg-anim-clear-night {
+  background-color: #020617;
+  background-image: 
+    radial-gradient(white 1px, transparent 2px),
+    radial-gradient(white 1px, transparent 2px);
+  background-size: 50px 50px, 100px 100px;
+  background-position: 0 0, 25px 25px;
+  animation: twinkle 3s ease-in-out infinite;
+}
+
+/* Clouds Night */
+.bg-anim-clouds-night {
+  background: #1e293b;
+  background-image: 
+    radial-gradient(circle at 50% 50%, rgba(255,255,255,0.1) 0%, transparent 60%),
+    radial-gradient(circle at 20% 80%, rgba(255,255,255,0.1) 0%, transparent 50%);
+  background-size: 200% 200%;
+  animation: clouds-move 30s linear infinite;
+}
+
+/* Rain Day */
+.bg-anim-rain-day {
+  background-color: #64748b;
+  background-image: linear-gradient(to bottom, rgba(255,255,255,0.3) 1px, transparent 1px);
+  background-size: 20px 20px;
+  animation: rain-fall 0.8s linear infinite;
+}
+
+/* Rain Night */
+.bg-anim-rain-night {
+  background-color: #020617;
+  background-image: linear-gradient(to bottom, rgba(255,255,255,0.1) 1px, transparent 1px);
+  background-size: 20px 20px;
+  animation: rain-fall 0.8s linear infinite;
+}
+
+/* Snow Day */
+.bg-anim-snow-day {
+  background-color: #cbd5e1;
+  background-image: 
+    radial-gradient(white 2px, transparent 3px),
+    radial-gradient(white 1px, transparent 2px);
+  background-size: 400px 400px, 300px 300px;
+  animation: snow-fall 10s linear infinite;
+}
+
+/* Snow Night */
+.bg-anim-snow-night {
+  background-color: #0f172a;
+  background-image: 
+    radial-gradient(white 2px, transparent 3px),
+    radial-gradient(white 1px, transparent 2px);
+  background-size: 400px 400px, 300px 300px;
+  animation: snow-fall 10s linear infinite;
+}
+
+/* Storm */
+@keyframes lightning {
+  0%, 90%, 100% { background-color: #0f172a; }
+  92%, 96% { background-color: #334155; }
+  94% { background-color: #475569; }
+}
+.bg-anim-storm {
+  background-color: #0f172a;
+  background-image: linear-gradient(to bottom, rgba(255,255,255,0.2) 2px, transparent 1px);
+  background-size: 30px 30px;
+  animation: rain-fall 0.5s linear infinite, lightning 5s infinite;
+}

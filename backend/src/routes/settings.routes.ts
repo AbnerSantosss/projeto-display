@@ -1,0 +1,70 @@
+import { Router, Request, Response } from 'express';
+import { authMiddleware, adminMiddleware } from '../middlewares/auth.middleware';
+import { settingsService } from '../services/settings.service';
+import { testSmtpConnection } from '../services/email.service';
+
+const router = Router();
+
+// GET /api/settings/smtp (admin only — retorna configurações de SMTP)
+router.get('/smtp', authMiddleware, adminMiddleware, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const smtp = await settingsService.getSmtpConfig();
+    res.json({
+      smtp_user: smtp?.user || '',
+      smtp_pass: smtp?.pass ? '••••••••' : '', // Nunca retorna a senha real
+      configured: !!(smtp?.user && smtp?.pass),
+    });
+  } catch (error: any) {
+    console.error('Erro ao buscar configurações SMTP:', error);
+    res.status(500).json({ error: 'Erro ao buscar configurações.' });
+  }
+});
+
+// POST /api/settings/smtp (admin only — salva configurações de SMTP)
+router.post('/smtp', authMiddleware, adminMiddleware, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { smtp_user, smtp_pass } = req.body;
+
+    if (!smtp_user || !smtp_pass) {
+      res.status(400).json({ error: 'E-mail e Senha de Aplicativo são obrigatórios.' });
+      return;
+    }
+
+    await settingsService.setMultiple({
+      smtp_user: smtp_user.trim(),
+      smtp_pass: smtp_pass.trim(),
+    });
+
+    res.json({ message: 'Configurações SMTP salvas com sucesso.' });
+  } catch (error: any) {
+    console.error('Erro ao salvar configurações SMTP:', error);
+    res.status(500).json({ error: 'Erro ao salvar configurações.' });
+  }
+});
+
+// POST /api/settings/smtp/test (admin only — testa conexão SMTP)
+router.post('/smtp/test', authMiddleware, adminMiddleware, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const result = await testSmtpConnection();
+    if (result.ok) {
+      res.json({ ok: true, message: 'Conexão SMTP verificada com sucesso!' });
+    } else {
+      res.status(400).json({ ok: false, error: result.error });
+    }
+  } catch (error: any) {
+    console.error('Erro ao testar SMTP:', error);
+    res.status(500).json({ ok: false, error: 'Erro interno ao testar conexão.' });
+  }
+});
+
+// GET /api/settings/smtp/status (autenticado — qualquer usuário pode verificar se SMTP está ativo)
+router.get('/smtp/status', authMiddleware, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const smtp = await settingsService.getSmtpConfig();
+    res.json({ configured: !!(smtp?.user && smtp?.pass) });
+  } catch (error: any) {
+    res.status(500).json({ configured: false });
+  }
+});
+
+export default router;

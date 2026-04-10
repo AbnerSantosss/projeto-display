@@ -1,0 +1,55 @@
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  username  String   @unique
+  email     String   @unique
+  password  String
+  role      String   @default("user")
+  createdAt DateTime @default(now())
+}
+
+model Display {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  pages     String   @db.LongText
+  updatedAt DateTime @updatedAt
+  devices   Device[]
+}
+
+model Device {
+  id          String   @id @default(uuid())
+  pairingCode String?  @unique
+  displayId   String?
+  display     Display? @relation(fields: [displayId], references: [id], onDelete: SetNull)
+  status      String   @default("pending")
+  lastSeen    DateTime @default(now())
+  name        String?
+}
+
+model Broadcast {
+  id          String   @id @default(uuid())
+  name        String
+  page        String   @db.LongText
+  startTime   String
+  endTime     String
+  isPermanent Boolean  @default(false)
+  displayIds  String   @db.Text
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  createdBy   String?
+}
+
+model Setting {
+  key       String   @id
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+}

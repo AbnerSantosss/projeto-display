@@ -1,0 +1,830 @@
+
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, Monitor, Edit3, Copy, Trash2, Check, RefreshCw, ExternalLink, Loader2, X, Zap, LogOut, Users as UsersIcon, Shield, Tv, Link as LinkIcon, Unplug, Calendar, FileImage, Settings, Mail, CheckCircle, XCircle, Send, AlertTriangle } from 'lucide-react';
+import { getDisplays, deleteDisplay, saveDisplay, getCurrentUser, logout, getUsers, saveUser, deleteUser, getDevices, linkDevice, unlinkDevice, getSmtpSettings, saveSmtpSettings, testSmtpConnection, getSmtpStatus } from '../services/storage';
+import { Display, User, Device } from '../types';
+import { MediaLibrary } from './MediaLibrary';
+
+const Dashboard: React.FC = () => {
+  const [displays, setDisplays] = useState<Display[]>([]);
+  const [devices, setDevices] = useState<Device[]>([]);
+  const [usersList, setUsersList] = useState<User[]>([]);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [userActionLoading, setUserActionLoading] = useState(false);
+  
+  // Modais
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [isMediaLibraryOpen, setIsMediaLibraryOpen] = useState(false);
+  
+  // Form States
+  const [newDisplayName, setNewDisplayName] = useState('');
+  
+  // Link Device Form States
+  const [linkCode, setLinkCode] = useState('');
+  const [linkName, setLinkName] = useState('');
+  const [selectedDisplayId, setSelectedDisplayId] = useState('');
+  
+  // User Invite Form States
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState<'user' | 'admin'>('user');
+  
+  // SMTP Settings States
+  const [smtpUser, setSmtpUser] = useState('');
+  const [smtpPass, setSmtpPass] = useState('');
+  const [smtpConfigured, setSmtpConfigured] = useState(false);
+  const [smtpTestResult, setSmtpTestResult] = useState<{ ok: boolean; message: string } | null>(null);
+  const [smtpLoading, setSmtpLoading] = useState(false);
+  
+  const [isDeleteDeviceModalOpen, setIsDeleteDeviceModalOpen] = useState(false);
+  const [deviceToDelete, setDeviceToDelete] = useState<string | null>(null);
+
+  const navigate = useNavigate();
+
+  const refreshData = async () => {
+    setLoading(true);
+    try {
+      const [displaysData, devicesData, user, smtpStatus] = await Promise.all([
+        getDisplays(),
+        getDevices(),
+        getCurrentUser(),
+        getSmtpStatus(),
+      ]);
+      
+      setDisplays(displaysData);
+      setDevices(devicesData);
+      setCurrentUser(user);
+      setSmtpConfigured(smtpStatus.configured);
+      
+      // Qualquer usuário logado pode ver a lista de usuários
+      const users = await getUsers();
+      setUsersList(users);
+    } catch (error) {
+      console.error("Dashboard: Falha ao carregar dados", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    refreshData();
+
+    // Polling para atualizar status dos dispositivos
+    const interval = setInterval(async () => {
+      try {
+        const devicesData = await getDevices();
+        setDevices(devicesData);
+      } catch (error) {
+        console.error("Dashboard: Falha ao recarregar dispositivos", error);
+      }
+    }, 15000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // --- Auth Handlers ---
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
+  };
+
+  // --- Device Handlers ---
+  const handleLinkDevice = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!linkCode || !selectedDisplayId || !linkName) return;
+
+    setLoading(true);
+    try {
+      const success = await linkDevice(linkCode, selectedDisplayId, linkName);
+      if (success) {
+        alert('Dispositivo vinculado com sucesso!');
+        setIsLinkModalOpen(false);
+        setLinkCode('');
+        setLinkName('');
+        setSelectedDisplayId('');
+        await refreshData();
+      } else {
+        alert('Código inválido ou dispositivo não encontrado.');
+      }
+    } catch (error) {
+      console.error("Erro ao vincular dispositivo:", error);
+      alert('Erro ao vincular dispositivo.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const confirmDeleteDevice = (deviceId: string) => {
+    setDeviceToDelete(deviceId);
+    setIsDeleteDeviceModalOpen(true);
+  };
+
+  const executeDeleteDevice = async () => {
+    if (!deviceToDelete) return;
+    
+    setLoading(true);
+    try {
+      await unlinkDevice(deviceToDelete);
+      await refreshData();
+      setIsDeleteDeviceModalOpen(false);
+      setDeviceToDelete(null);
+    } catch (error) {
+      console.error("Erro ao desvincular:", error);
+      alert("Erro ao excluir dispositivo. Tente novamente.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // --- Display Handlers ---
+  const openCreateModal = () => {
+    setNewDisplayName('');
+    setIsModalOpen(true);
+  };
+
+  const handleCreateConfirm = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newDisplayName.trim()) return;
+    
+    setIsModalOpen(false); 
+    setLoading(true);
+
+    try {
+      // Geração de ID robusta (fallback se crypto.randomUUID não existir)
+      const id = typeof crypto.randomUUID === 'function' 
+        ? crypto.randomUUID() 
+        : Date.now().toString(36) + Math.random().toString(36).substr(2);
+        
+      const slug = newDisplayName.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Math.random().toString(36).substring(2, 6);
+      
+      const newDisplay: Display = {
+        id,
+        name: newDisplayName,
+        slug,
+        pages: [{ id: 'p' + Date.now(), order: 1, duration: 15, layout: [] }],
+        updatedAt: Date.now()
+      };
+      
+      await saveDisplay(newDisplay);
+      await refreshData();
+    } catch (error) {
+      console.error("Dashboard: Erro ao criar tela:", error);
+      alert("Erro ao criar tela. Verifique a conexão.");
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (confirm('Tem certeza que deseja excluir esta tela?')) {
+      setLoading(true);
+      await deleteDisplay(id);
+      await refreshData();
+    }
+  };
+
+  // --- User Handlers ---
+  const handleInviteUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inviteEmail || !inviteEmail.includes('@')) {
+      alert('Informe um e-mail válido.');
+      return;
+    }
+
+    setUserActionLoading(true);
+    try {
+      const result = await saveUser(inviteEmail.trim(), inviteRole);
+      
+      const updatedUsers = await getUsers();
+      setUsersList(updatedUsers);
+      
+      setInviteEmail('');
+      setInviteRole('user');
+      alert(result.message || 'Convite enviado com sucesso!');
+    } catch (err: any) {
+      alert('Erro ao convidar: ' + err.message);
+    } finally {
+      setUserActionLoading(false);
+    }
+  };
+
+  const handleDeleteUser = async (id: string) => {
+    if (confirm('Remover este usuário? (O usuário perderá acesso ao painel)')) {
+      setUserActionLoading(true);
+      try {
+        await deleteUser(id);
+        const updatedUsers = await getUsers();
+        setUsersList(updatedUsers);
+      } catch (err: any) {
+        alert(err.message);
+      } finally {
+        setUserActionLoading(false);
+      }
+    }
+  };
+
+  // --- Settings Handlers ---
+  const openSettingsModal = async () => {
+    setIsSettingsModalOpen(true);
+    setSmtpLoading(true);
+    setSmtpTestResult(null);
+    try {
+      const cfg = await getSmtpSettings();
+      setSmtpUser(cfg.smtp_user || '');
+      setSmtpPass(cfg.smtp_pass === '••••••••' ? '' : cfg.smtp_pass);
+    } catch {
+      // Ignora
+    } finally {
+      setSmtpLoading(false);
+    }
+  };
+
+  const handleSaveSmtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!smtpUser || !smtpPass) {
+      alert('Preencha o e-mail e a senha de aplicativo.');
+      return;
+    }
+    setSmtpLoading(true);
+    try {
+      await saveSmtpSettings(smtpUser.trim(), smtpPass.trim());
+      setSmtpTestResult(null);
+      alert('Configurações SMTP salvas com sucesso!');
+      setSmtpConfigured(true);
+    } catch (err: any) {
+      alert('Erro ao salvar: ' + err.message);
+    } finally {
+      setSmtpLoading(false);
+    }
+  };
+
+  const handleTestSmtp = async () => {
+    setSmtpLoading(true);
+    setSmtpTestResult(null);
+    try {
+      const result = await testSmtpConnection();
+      setSmtpTestResult({ ok: result.ok, message: result.ok ? (result.message || 'Conexão OK!') : (result.error || 'Falhou.') });
+      if (result.ok) setSmtpConfigured(true);
+    } catch (err: any) {
+      setSmtpTestResult({ ok: false, message: err.message });
+    } finally {
+      setSmtpLoading(false);
+    }
+  };
+
+  const getPlayerUrl = (slug: string) => {
+    return `${window.location.origin}${window.location.pathname}#/player/${slug}`;
+  };
+
+  const copyPlayerLink = async (slug: string, id: string) => {
+    const url = getPlayerUrl(slug);
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch (err) {
+      // Fallback para navegadores sem permissão de clipboard
+      prompt("Copie o link abaixo:", url);
+    }
+  };
+
+  const openPlayer = (slug: string) => {
+    window.open(getPlayerUrl(slug), '_blank');
+  };
+
+  return (
+    <div className="p-8 max-w-7xl mx-auto relative min-h-screen">
+      
+      {/* BACKGROUND GLOW */}
+      <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-900/20 rounded-full blur-[120px]"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-cyan-900/20 rounded-full blur-[120px]"></div>
+      </div>
+
+      {/* MODAL CRIAR TELA */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-[0_0_50px_rgba(99,102,241,0.25)] w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
+              <h3 className="font-bold text-lg text-slate-100 flex items-center gap-2">
+                <Plus className="text-cyan-400" size={20}/> Nova Tela
+              </h3>
+              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-rose-500 transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            <form onSubmit={handleCreateConfirm} className="p-6">
+              <label className="block text-sm font-bold text-slate-400 mb-2 uppercase tracking-wider">Nome do Dispositivo</label>
+              <input 
+                autoFocus
+                type="text" 
+                value={newDisplayName}
+                onChange={(e) => setNewDisplayName(e.target.value)}
+                placeholder="Ex: Recepção, Vitrine..."
+                className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-slate-100 placeholder:text-slate-600 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all font-medium"
+              />
+              <div className="mt-8 flex gap-3 justify-end">
+                <button 
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2.5 rounded-lg text-slate-400 font-bold hover:bg-slate-800 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  type="submit"
+                  className="px-6 py-2.5 rounded-lg bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-bold shadow-[0_0_20px_rgba(34,211,238,0.3)] transition-all flex items-center gap-2"
+                >
+                  <Zap size={18} className="fill-white" /> Criar Tela
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL GERENCIAR USUÁRIOS (Acessível a todos) */}
+      {isUserModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-[0_0_50px_rgba(16,185,129,0.25)] w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
+              <h3 className="font-bold text-lg text-slate-100 flex items-center gap-2">
+                <UsersIcon className="text-emerald-400" size={20}/> Gestão de Usuários
+              </h3>
+              <button onClick={() => setIsUserModalOpen(false)} className="text-slate-400 hover:text-rose-500 transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="p-6 flex-1 overflow-y-auto">
+               {/* Formulário Convidar Usuário */}
+               {!smtpConfigured && (
+                 <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 mb-6 flex items-start gap-3">
+                   <AlertTriangle className="text-amber-400 shrink-0 mt-0.5" size={18} />
+                   <div>
+                     <p className="text-amber-300 text-sm font-bold">Envio de e-mail não configurado</p>
+                     <p className="text-amber-400/70 text-xs mt-1">
+                       {currentUser?.role === 'admin' 
+                         ? 'Configure as credenciais SMTP nas Configurações para habilitar convites.'
+                         : 'Peça a um administrador para configurar o provedor de e-mail.'}
+                     </p>
+                   </div>
+                 </div>
+               )}
+               <form onSubmit={handleInviteUser} className="bg-slate-950/50 p-4 rounded-xl border border-slate-800 mb-6">
+                  <div className="flex flex-col md:flex-row gap-4 items-end">
+                    <div className="flex-1 w-full">
+                       <label className="text-[10px] font-black text-slate-500 uppercase block mb-1">E-mail do Novo Usuário</label>
+                       <input type="email" placeholder="Ex: joao@empresa.com" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-white placeholder:text-slate-600" disabled={!smtpConfigured} />
+                    </div>
+                    <div className="w-full md:w-40">
+                       <label className="text-[10px] font-black text-slate-500 uppercase block mb-1">Permissão</label>
+                       <select value={inviteRole} onChange={e => setInviteRole(e.target.value as 'user' | 'admin')} className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-white appearance-none cursor-pointer" disabled={!smtpConfigured}>
+                         <option value="user">Usuário</option>
+                         <option value="admin">Admin</option>
+                       </select>
+                    </div>
+                    <button disabled={userActionLoading || !smtpConfigured} type="submit" className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-2 px-4 rounded-lg text-sm w-full md:w-auto flex items-center justify-center gap-2 whitespace-nowrap">
+                       {userActionLoading ? <Loader2 size={14} className="animate-spin"/> : <Send size={14} />} Enviar Convite
+                    </button>
+                  </div>
+                  {smtpConfigured && <p className="text-[10px] text-slate-500 mt-3 flex items-center gap-1"><Mail size={10}/> A senha será gerada automaticamente e enviada por e-mail.</p>}
+               </form>
+
+               {/* Lista de Usuários */}
+               <div className="space-y-2">
+                  <h4 className="text-xs font-black text-slate-500 uppercase mb-2">Usuários Cadastrados</h4>
+                  {usersList.length === 0 && <p className="text-slate-600 text-xs">Carregando usuários...</p>}
+                  {usersList.map(u => (
+                    <div key={u.id} className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg border border-slate-700">
+                       <div className="flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${u.role === 'admin' ? 'bg-indigo-500 text-white' : 'bg-slate-700 text-slate-300'}`}>
+                             {u.role === 'admin' ? 'A' : 'U'}
+                          </div>
+                          <div>
+                             <p className="font-bold text-sm text-slate-200">{u.email || u.username}</p>
+                             <p className="text-[10px] text-slate-500 font-mono">{u.role === 'admin' ? 'Administrador' : 'Usuário'}</p>
+                          </div>
+                       </div>
+                       {/* Botão excluir: somente admin pode ver */}
+                       {u.role !== 'admin' && currentUser?.role === 'admin' && (
+                         <button onClick={() => handleDeleteUser(u.id)} disabled={userActionLoading} className="p-2 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors disabled:opacity-50">
+                            <Trash2 size={16} />
+                         </button>
+                       )}
+                       {u.role === 'admin' && <Shield size={16} className="text-slate-600 mx-2" />}
+                    </div>
+                  ))}
+               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL CONFIGURAÇÕES SMTP (ADMIN ONLY) */}
+      {isSettingsModalOpen && currentUser?.role === 'admin' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-[0_0_50px_rgba(99,102,241,0.25)] w-full max-w-md overflow-hidden">
+            <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
+              <h3 className="font-bold text-lg text-slate-100 flex items-center gap-2">
+                <Settings className="text-indigo-400" size={20}/> Configurações de E-mail
+              </h3>
+              <button onClick={() => setIsSettingsModalOpen(false)} className="text-slate-400 hover:text-rose-500 transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            <form onSubmit={handleSaveSmtp} className="p-6 space-y-4">
+              <div className="bg-slate-950/50 border border-slate-800 rounded-lg p-3 mb-2">
+                <p className="text-[10px] text-slate-400 font-bold uppercase mb-1 flex items-center gap-1">
+                  <Mail size={10} /> Provedor Gmail
+                </p>
+                <p className="text-xs text-slate-500 leading-relaxed"> 
+                  Use uma <b className="text-slate-300">Senha de Aplicativo</b> do Google. Acesse <b className="text-cyan-400">myaccount.google.com/apppasswords</b> para gerar uma.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black text-slate-500 mb-1 uppercase tracking-wider">E-mail de Envio</label>
+                <input 
+                  type="email" 
+                  value={smtpUser}
+                  onChange={(e) => setSmtpUser(e.target.value)}
+                  placeholder="seuenvio@gmail.com"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-slate-100 placeholder:text-slate-600 focus:border-cyan-500 outline-none transition-all text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black text-slate-500 mb-1 uppercase tracking-wider">Senha de Aplicativo</label>
+                <input 
+                  type="password" 
+                  value={smtpPass}
+                  onChange={(e) => setSmtpPass(e.target.value)}
+                  placeholder="xxxx xxxx xxxx xxxx"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-slate-100 placeholder:text-slate-600 focus:border-cyan-500 outline-none transition-all text-sm font-mono tracking-wider"
+                />
+              </div>
+
+              {/* Resultado do teste */}
+              {smtpTestResult && (
+                <div className={`flex items-center gap-2 p-3 rounded-lg border text-sm font-bold ${
+                  smtpTestResult.ok 
+                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' 
+                    : 'bg-rose-500/10 border-rose-500/30 text-rose-400'
+                }`}>
+                  {smtpTestResult.ok ? <CheckCircle size={16} /> : <XCircle size={16} />}
+                  {smtpTestResult.message}
+                </div>
+              )}
+
+              <div className="flex gap-3 justify-between pt-4 border-t border-slate-800">
+                <button 
+                  type="button"
+                  onClick={handleTestSmtp}
+                  disabled={smtpLoading || !smtpUser || !smtpPass}
+                  className="px-4 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-sm transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {smtpLoading ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />} Testar Conexão
+                </button>
+                <button 
+                  type="submit"
+                  disabled={smtpLoading || !smtpUser || !smtpPass}
+                  className="px-6 py-2.5 rounded-lg bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-bold text-sm shadow-[0_0_20px_rgba(34,211,238,0.3)] transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Check size={14} /> Salvar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL VINCULAR DISPOSITIVO */}
+      {isLinkModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-[0_0_50px_rgba(6,182,212,0.25)] w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
+              <h3 className="font-bold text-lg text-slate-100 flex items-center gap-2">
+                <LinkIcon className="text-cyan-400" size={20}/> Vincular TV
+              </h3>
+              <button onClick={() => setIsLinkModalOpen(false)} className="text-slate-400 hover:text-rose-500 transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            <form onSubmit={handleLinkDevice} className="p-6 space-y-4">
+              
+              <div className="bg-slate-950/50 border border-slate-800 rounded-lg p-3 mb-4">
+                <p className="text-[10px] text-slate-400 font-bold uppercase mb-1 flex items-center gap-1">
+                  <Monitor size={10} /> Instrução
+                </p>
+                <p className="text-xs text-slate-300 mb-2">Abra este link no navegador da sua TV:</p>
+                <div className="bg-black/50 p-2 rounded border border-slate-800 font-mono text-[10px] text-cyan-400 break-all select-all cursor-pointer hover:bg-black/70 transition-colors" onClick={() => navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}#/player`)}>
+                  {window.location.origin}{window.location.pathname}#/player
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Código de Pareamento</label>
+                <input 
+                  autoFocus
+                  type="text" 
+                  maxLength={6}
+                  value={linkCode}
+                  onChange={(e) => setLinkCode(e.target.value.replace(/\D/g, ''))}
+                  placeholder="000000"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-center text-2xl tracking-[0.5em] font-mono text-cyan-400 placeholder:text-slate-800 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all font-bold"
+                />
+                <p className="text-[10px] text-slate-500 mt-1 text-center">Digite o código exibido na TV</p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Nome do Dispositivo</label>
+                <input 
+                  type="text" 
+                  value={linkName}
+                  onChange={(e) => setLinkName(e.target.value)}
+                  placeholder="Ex: TV Recepção"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-slate-100 placeholder:text-slate-600 focus:border-cyan-500 outline-none transition-all font-medium text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Selecionar Tela</label>
+                <select 
+                  value={selectedDisplayId}
+                  onChange={(e) => setSelectedDisplayId(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-slate-100 focus:border-cyan-500 outline-none transition-all font-medium text-sm appearance-none cursor-pointer"
+                >
+                  <option value="" disabled>Selecione um conteúdo...</option>
+                  {displays.map(d => (
+                    <option key={d.id} value={d.id}>{d.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="mt-8 flex gap-3 justify-end pt-4 border-t border-slate-800">
+                <button 
+                  type="button"
+                  onClick={() => setIsLinkModalOpen(false)}
+                  className="px-4 py-2.5 rounded-lg text-slate-400 font-bold hover:bg-slate-800 transition-colors text-sm"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  type="submit"
+                  disabled={!linkCode || !linkName || !selectedDisplayId}
+                  className="px-6 py-2.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-bold shadow-[0_0_20px_rgba(34,211,238,0.3)] transition-all flex items-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <LinkIcon size={16} /> Vincular
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL CONFIRMAÇÃO EXCLUSÃO DISPOSITIVO */}
+      {isDeleteDeviceModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-[0_0_50px_rgba(244,63,94,0.25)] w-full max-w-sm overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
+              <h3 className="font-bold text-lg text-slate-100 flex items-center gap-2">
+                <Trash2 className="text-rose-500" size={20}/> Excluir Dispositivo?
+              </h3>
+              <button onClick={() => setIsDeleteDeviceModalOpen(false)} className="text-slate-400 hover:text-rose-500 transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-6">
+              <p className="text-slate-300 text-sm mb-6 leading-relaxed">
+                Tem certeza que deseja remover este dispositivo? Ele perderá a conexão com a tela atual.
+              </p>
+              <div className="flex gap-3 justify-end">
+                <button 
+                  onClick={() => setIsDeleteDeviceModalOpen(false)}
+                  className="px-4 py-2.5 rounded-lg text-slate-400 font-bold hover:bg-slate-800 transition-colors text-sm"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  onClick={executeDeleteDevice}
+                  className="px-6 py-2.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold shadow-[0_0_20px_rgba(244,63,94,0.3)] transition-all flex items-center gap-2 text-sm"
+                >
+                  <Trash2 size={16} /> Confirmar Exclusão
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isMediaLibraryOpen && (
+        <MediaLibrary onClose={() => setIsMediaLibraryOpen(false)} />
+      )}
+
+      {/* HEADER */}
+      <header className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-12 relative z-10 gap-6">
+        <div className="flex items-center gap-4">
+          <img 
+            src="https://certeirofc.com.br/wp-content/uploads/2026/02/Gemini_Generated_Image_opexl8opexl8opex_upscayl_10x_upscayl-lite-4x_1-removebg-preview.png" 
+            alt="Logo" 
+            className="w-16 h-16 object-contain drop-shadow-[0_0_10px_rgba(34,211,238,0.5)]"
+          />
+          <div>
+            <h1 className="text-4xl font-black text-white tracking-tight">
+              Officecom<span className="text-cyan-400">Display</span>
+            </h1>
+            <p className="text-slate-400 text-sm mt-1 font-medium flex items-center gap-2">
+               Bem-vindo, <span className="text-white font-bold">{currentUser?.username || '...'}</span>
+            </p>
+          </div>
+        </div>
+        <div className="flex gap-3 items-center flex-wrap w-full xl:w-auto justify-start xl:justify-end">
+          {currentUser?.role === 'admin' && (
+            <button 
+               onClick={openSettingsModal}
+               className="flex items-center gap-2 bg-slate-900 border border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/10 px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all"
+            >
+               <Settings size={16} /> Config. E-mail
+            </button>
+          )}
+          <button 
+             onClick={() => setIsUserModalOpen(true)}
+             className="flex items-center gap-2 bg-slate-900 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all"
+          >
+             <UsersIcon size={16} /> Usuários
+          </button>
+
+          <button 
+            onClick={() => setIsMediaLibraryOpen(true)}
+            className="flex items-center gap-2 bg-slate-900 border border-fuchsia-500/30 text-fuchsia-400 hover:bg-fuchsia-500/10 px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all"
+          >
+            <FileImage size={16} /> Mídia
+          </button>
+
+          <button 
+            onClick={() => navigate('/scheduler')}
+            className="flex items-center gap-2 bg-slate-900 border border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/10 px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all"
+          >
+            <Calendar size={16} /> Central de Programação
+          </button>
+
+          <button 
+            onClick={() => setIsLinkModalOpen(true)}
+            className="flex items-center gap-2 bg-slate-900 border border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all"
+          >
+            <Tv size={16} /> Vincular TV
+          </button>
+
+          <button 
+            onClick={() => refreshData()}
+            className="flex items-center gap-2 bg-slate-900 border border-slate-700 hover:border-slate-500 text-slate-300 px-4 py-3 rounded-xl font-semibold transition-all"
+            title="Atualizar lista"
+          >
+            <RefreshCw size={18} className={loading ? 'animate-spin text-cyan-400' : ''} />
+          </button>
+          
+          <button 
+            onClick={openCreateModal}
+            disabled={loading}
+            className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-[0_0_20px_rgba(99,102,241,0.4)] disabled:opacity-50"
+          >
+            <Plus size={20} strokeWidth={3} /> Nova Tela
+          </button>
+
+          <button 
+             onClick={handleLogout}
+             className="flex items-center gap-2 bg-slate-950 border border-slate-800 text-slate-500 hover:text-rose-400 hover:border-rose-500/50 px-4 py-3 rounded-xl font-bold transition-all ml-2"
+             title="Sair"
+          >
+             <LogOut size={18} />
+          </button>
+        </div>
+      </header>
+
+      {/* LISTA DE TELAS */}
+      {loading && displays.length === 0 ? (
+         <div className="flex flex-col items-center justify-center h-64 text-slate-500 relative z-10">
+            <Loader2 size={48} className="animate-spin mb-4 text-cyan-500" />
+            <p className="tracking-widest uppercase text-xs font-bold">Carregando sistema...</p>
+         </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10">
+          {displays.map(display => (
+            <div key={display.id} className="bg-slate-900/50 backdrop-blur-md border border-slate-800 rounded-2xl overflow-hidden shadow-lg hover:shadow-[0_0_30px_rgba(34,211,238,0.15)] hover:border-cyan-500/50 transition-all group relative">
+              <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-cyan-500/5 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"></div>
+              
+              <button 
+                onClick={(e) => handleDelete(display.id, e)}
+                className="absolute top-3 right-3 p-2 bg-slate-900/80 rounded-full text-slate-400 hover:text-rose-500 hover:bg-rose-500/20 opacity-50 hover:opacity-100 transition-all z-20 backdrop-blur-sm border border-slate-800 hover:border-rose-500/30 shadow-lg"
+                title="Excluir Tela"
+              >
+                <Trash2 size={16} />
+              </button>
+
+              <div className="h-40 bg-slate-950 flex items-center justify-center border-b border-slate-800 relative group-hover:bg-slate-900 transition-colors">
+                <Monitor size={56} className="text-slate-700 group-hover:text-cyan-400 transition-colors drop-shadow-[0_0_10px_rgba(34,211,238,0.2)]" />
+                
+                <div className="absolute top-4 left-4 flex gap-2">
+                   {devices.filter(d => d.display_id === display.id).some(d => (Date.now() - d.last_seen) < 60000) ? (
+                     <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-black px-2 py-1 rounded flex items-center gap-1">
+                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></div> ONLINE
+                     </div>
+                   ) : (
+                     <div className="bg-slate-500/10 border border-slate-500/20 text-slate-400 text-[10px] font-black px-2 py-1 rounded flex items-center gap-1">
+                        <div className="w-1.5 h-1.5 rounded-full bg-slate-400"></div> OFFLINE
+                     </div>
+                   )}
+                </div>
+              </div>
+              
+              <div className="p-6 relative">
+                <h3 className="text-xl font-bold text-slate-100 mb-1 tracking-tight group-hover:text-cyan-400 transition-colors">{display.name}</h3>
+                <p className="text-[10px] text-slate-500 mb-6 font-mono truncate uppercase tracking-wider">ID: {display.slug}</p>
+                
+                <div className="flex flex-col gap-3">
+                  <button 
+                    onClick={() => navigate(`/edit/${display.id}`)}
+                    className="w-full flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-white py-3 rounded-xl text-sm font-bold transition-all border border-slate-700 hover:border-slate-500 shadow-lg"
+                  >
+                    <Edit3 size={16} /> Abrir Designer
+                  </button>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button 
+                      onClick={() => copyPlayerLink(display.slug, display.id)}
+                      className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all border ${
+                        copiedId === display.id 
+                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' 
+                        : 'bg-slate-800/50 text-indigo-300 hover:bg-slate-800 border-slate-700'
+                      }`}
+                    >
+                      {copiedId === display.id ? <Check size={14} /> : <Copy size={14} />}
+                      {copiedId === display.id ? 'Copiado!' : 'Copiar URL'}
+                    </button>
+                    <button 
+                      onClick={() => openPlayer(display.slug)}
+                      className="flex items-center justify-center gap-2 py-2.5 bg-slate-800/50 text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-700 rounded-xl text-xs font-bold transition-all"
+                    >
+                      <ExternalLink size={14} /> Visualizar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+          
+          {displays.length === 0 && !loading && (
+             <div className="col-span-full py-16 text-center border-2 border-dashed border-slate-800 rounded-2xl bg-slate-900/30">
+                <Monitor size={48} className="mx-auto text-slate-700 mb-4" />
+                <p className="text-slate-400 mb-6">Você ainda não tem telas configuradas.</p>
+                <button onClick={openCreateModal} className="text-cyan-400 font-bold hover:text-cyan-300 hover:underline">Criar primeira tela</button>
+             </div>
+          )}
+        </div>
+      )}
+      {/* LISTA DE DISPOSITIVOS VINCULADOS */}
+      {devices.filter(d => d.status === 'linked').length > 0 && (
+        <div className="mt-16 relative z-10 animate-in fade-in slide-in-from-bottom-8 duration-700">
+          <h2 className="text-xl font-bold text-slate-300 mb-6 flex items-center gap-2">
+            <Tv className="text-cyan-500" /> Dispositivos Vinculados
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {devices.filter(d => d.status === 'linked').map(device => {
+              const linkedDisplay = displays.find(d => d.id === device.display_id);
+              const isOnline = (Date.now() - device.last_seen) < 60000; // 1 min timeout
+
+              return (
+                <div key={device.id} className="bg-slate-900/30 border border-slate-800 rounded-xl p-4 flex items-center justify-between group hover:border-slate-600 transition-all">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-slate-700'}`}></div>
+                    <div>
+                      <h4 className="font-bold text-slate-200 text-sm">{device.name || 'Dispositivo sem nome'}</h4>
+                      <p className="text-[10px] text-slate-500 font-mono">
+                        {linkedDisplay ? `Exibindo: ${linkedDisplay.name}` : 'Sem conteúdo'}
+                      </p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => confirmDeleteDevice(device.id)}
+                    className="flex items-center gap-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/20 px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
+                    title="Excluir Dispositivo"
+                  >
+                    <Trash2 size={14} /> Excluir
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default Dashboard;
