@@ -5,7 +5,7 @@
     "node": "20.x"
   },
   "scripts": {
-    "build": "cd backend && npm install && npx prisma db push && npm run build",
-    "start": "cd backend && npm start"
+    "build": "cd backend && npm install && npx prisma generate && npm run build",
+    "start": "cd backend && npm run db:push && npm start"
   }
 }
