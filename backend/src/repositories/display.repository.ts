@@ -13,6 +13,14 @@ export class DisplayRepository {
     return prisma.display.findUnique({ where: { slug } });
   }
 
+  // Query ultra-leve: retorna apenas o timestamp de atualização
+  async findVersionBySlug(slug: string) {
+    return prisma.display.findUnique({
+      where: { slug },
+      select: { updatedAt: true },
+    });
+  }
+
   async upsert(data: { id?: string; name: string; slug: string; pages: string }) {
     return prisma.display.upsert({
       where: { id: data.id || '' },

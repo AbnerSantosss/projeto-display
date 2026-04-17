@@ -83,7 +83,7 @@ const Dashboard: React.FC = () => {
       } catch (error) {
         console.error("Dashboard: Falha ao recarregar dispositivos", error);
       }
-    }, 15000);
+    }, 30000); // A cada 30 segundos (reduzido de 15s)
 
     return () => clearInterval(interval);
   }, []);

@@ -27,6 +27,11 @@ export class DisplayService {
     };
   }
 
+  // Retorna apenas o updatedAt — query ultra-leve para o Player checar versão
+  async getVersionBySlug(slug: string) {
+    return displayRepository.findVersionBySlug(slug);
+  }
+
   async save(data: { id?: string; name: string; slug: string; pages: any }) {
     const pagesStr = typeof data.pages === 'string' ? data.pages : JSON.stringify(data.pages);
     return displayRepository.upsert({

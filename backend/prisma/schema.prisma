@@ -1,5 +1,5 @@
 datasource db {
-  provider = "mysql"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -20,7 +20,7 @@ model Display {
   id        String   @id @default(uuid())
   name      String
   slug      String   @unique
-  pages     String   @db.LongText
+  pages     String   @db.Text
   updatedAt DateTime @updatedAt
   devices   Device[]
 }
@@ -38,7 +38,7 @@ model Device {
 model Broadcast {
   id          String   @id @default(uuid())
   name        String
-  page        String   @db.LongText
+  page        String   @db.Text
   startTime   String
   endTime     String
   isPermanent Boolean  @default(false)

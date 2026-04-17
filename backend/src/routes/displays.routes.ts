@@ -15,6 +15,32 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
   }
 });
 
+// GET /api/displays/slug/:slug/version — Endpoint LEVE para check de versão (Player)
+router.get('/slug/:slug/version', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const version = await displayService.getVersionBySlug(req.params.slug as string);
+
+    if (!version) {
+      res.status(404).json({ error: 'Display não encontrado.' });
+      return;
+    }
+
+    // Cache condicional via ETag
+    const etag = `"${version.updatedAt.getTime()}"`;
+    if (req.headers['if-none-match'] === etag) {
+      res.status(304).end();
+      return;
+    }
+
+    res.set('ETag', etag);
+    res.set('Cache-Control', 'no-cache');
+    res.json({ updatedAt: version.updatedAt.getTime() });
+  } catch (error: any) {
+    console.error('Erro ao buscar versão do display:', error);
+    res.status(500).json({ error: 'Erro ao buscar versão.' });
+  }
+});
+
 // GET /api/displays/slug/:slug (PÚBLICO — Player)
 router.get('/slug/:slug', async (req: Request, res: Response): Promise<void> => {
   try {
@@ -25,6 +51,15 @@ router.get('/slug/:slug', async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
+    // Cache condicional via ETag
+    const etag = `"${display.updatedAt}"`;
+    if (req.headers['if-none-match'] === etag) {
+      res.status(304).end();
+      return;
+    }
+
+    res.set('ETag', etag);
+    res.set('Cache-Control', 'no-cache');
     res.json(display);
   } catch (error: any) {
     console.error('Erro ao buscar display por slug:', error);
@@ -42,6 +77,15 @@ router.get('/:id', authMiddleware, async (req: Request, res: Response): Promise<
       return;
     }
 
+    // Cache condicional via ETag
+    const etag = `"${display.updatedAt}"`;
+    if (req.headers['if-none-match'] === etag) {
+      res.status(304).end();
+      return;
+    }
+
+    res.set('ETag', etag);
+    res.set('Cache-Control', 'no-cache');
     res.json(display);
   } catch (error: any) {
     console.error('Erro ao buscar display:', error);

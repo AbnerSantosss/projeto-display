@@ -114,6 +114,18 @@ export const getDisplayById = async (id: string): Promise<Display | undefined> =
   }
 };
 
+// Retorna apenas o timestamp de atualização — ultra-leve (~20 bytes)
+export const getDisplayVersion = async (slug: string): Promise<number | null> => {
+  try {
+    const result = await api.get<{ updatedAt: number } | null>(`/displays/slug/${slug}/version`);
+    // null = 304 Not Modified (sem mudanças)
+    if (result === null) return null;
+    return result.updatedAt;
+  } catch {
+    return null;
+  }
+};
+
 export const saveDisplay = async (display: Display): Promise<void> => {
   // Backend faz upsert via POST
   await api.post('/displays', {

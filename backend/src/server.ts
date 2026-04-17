@@ -17,17 +17,32 @@ import { errorMiddleware } from './middlewares/error.middleware';
 const app = express();
 const PORT = parseInt(process.env.PORT || '3001', 10);
 
-// Middlewares globais
+// CORS configurado para produção + desenvolvimento
+const ALLOWED_ORIGINS = process.env.CORS_ORIGINS
+  ? process.env.CORS_ORIGINS.split(',').map(o => o.trim())
+  : ['http://localhost:3000', 'http://localhost:5173'];
+
 app.use(cors({
-  origin: true,
+  origin: (origin, callback) => {
+    // Permitir requests sem origin (como mobile apps ou curl)
+    if (!origin) return callback(null, true);
+    if (ALLOWED_ORIGINS.some(allowed => origin.startsWith(allowed) || allowed === '*')) {
+      return callback(null, true);
+    }
+    callback(new Error('Origem não permitida pelo CORS'));
+  },
   credentials: true,
 }));
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Servir arquivos estáticos de uploads
+// Servir arquivos estáticos de uploads (modo local/dev)
 const uploadsPath = path.resolve(__dirname, '../uploads');
-app.use('/uploads', express.static(uploadsPath));
+app.use('/uploads', express.static(uploadsPath, {
+  maxAge: '1d',
+  etag: true,
+}));
 
 // Rotas
 app.use('/api/auth', authRoutes);
@@ -50,6 +65,7 @@ app.use(errorMiddleware);
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Backend disponível em http://localhost:${PORT}`);
   console.log(`📁 Uploads servidos em http://localhost:${PORT}/uploads/`);
+  console.log(`🔧 Modo R2: ${!!(process.env.R2_ENDPOINT) ? 'ATIVADO' : 'DESATIVADO (local)'}`);
 });
 
 export default app;

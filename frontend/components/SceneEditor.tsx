@@ -1,11 +1,11 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import RGL, { WidthProvider } from 'react-grid-layout';
-import { 
+import {
   Plus, Trash2, X,
   Image as ImageIcon, Type, CloudSun, Clock, Calendar, CalendarDays,
   Settings, Layers, Move, Upload, Link as LinkIcon, CheckCircle2,
-  Maximize2, Film, Info, Loader2, MonitorPlay, Rss, Globe, Gift, Search, Palette, Map, Layout, MoveHorizontal
+  Maximize2, Minimize2, Film, Info, Loader2, MonitorPlay, Rss, Globe, Gift, Search, Palette, Map, Layout, MoveHorizontal
 } from 'lucide-react';
 import { uploadMedia } from '../services/storage';
 import { Page, WidgetType, LayoutItem, WidgetData } from '../types';
@@ -26,7 +26,9 @@ const SceneEditor: React.FC<SceneEditorProps> = ({ page, onChange }) => {
   const [containerWidth, setContainerWidth] = useState(1200);
   const [showBgAnimModal, setShowBgAnimModal] = useState(false);
   const [mediaLibraryConfig, setMediaLibraryConfig] = useState<{ isOpen: boolean, onSelect: (url: string) => void, allowedTypes: 'image' | 'video' | 'all' } | null>(null);
-  
+  // Guarda as dimensões originais dos widgets antes de fullscreen
+  const [originalSizes, setOriginalSizes] = useState<Record<string, { x: number; y: number; w: number; h: number }>>({});
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bgInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -102,11 +104,17 @@ const SceneEditor: React.FC<SceneEditorProps> = ({ page, onChange }) => {
   const setFullScreen = (wId: string) => {
     const widget = page.layout.find(w => w.i === wId);
     if (!widget) return;
-    
+
+    // Salva as dimensões originais antes de expandir
+    setOriginalSizes(prev => ({
+      ...prev,
+      [wId]: { x: widget.x, y: widget.y, w: widget.w, h: widget.h }
+    }));
+
     // Calculate required height in grid units to fill the container
     const containerHeight = containerRef.current?.clientHeight || 0;
     const requiredRows = containerHeight > 0 && rowHeight > 0 ? Math.ceil(containerHeight / rowHeight) : 27;
-    
+
     const fullScreenWidget = {
       ...widget,
       x: 0,
@@ -114,15 +122,34 @@ const SceneEditor: React.FC<SceneEditorProps> = ({ page, onChange }) => {
       w: GRID_COLS,
       h: requiredRows
     };
-    
-    onChange({ ...page, layout: [fullScreenWidget] });
+
+    // Mantém os outros widgets e apenas atualiza este
+    const updatedLayout = page.layout.map(w => w.i === wId ? fullScreenWidget : w);
+    onChange({ ...page, layout: updatedLayout });
+  };
+
+  const restoreSize = (wId: string) => {
+    const saved = originalSizes[wId];
+    if (!saved) return;
+
+    const updatedLayout = page.layout.map(w =>
+      w.i === wId ? { ...w, ...saved } : w
+    );
+    onChange({ ...page, layout: updatedLayout });
+
+    // Remove do mapa de dimensões salvas
+    setOriginalSizes(prev => {
+      const next = { ...prev };
+      delete next[wId];
+      return next;
+    });
   };
 
   const currentWidget = page.layout.find(w => w.i === selectedWidget);
 
   return (
     <div className="flex flex-col h-full overflow-hidden bg-slate-950 rounded-2xl border border-slate-800 shadow-2xl">
-      
+
       {/* TOOLBAR */}
       <div className="bg-slate-900/80 backdrop-blur-md border-b border-slate-800 p-3 flex items-center justify-between z-30">
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 md:pb-0">
@@ -139,107 +166,107 @@ const SceneEditor: React.FC<SceneEditorProps> = ({ page, onChange }) => {
         </div>
 
         <div className="flex items-center gap-2">
-           <button 
-             onClick={() => {
-               setMediaLibraryConfig({
-                 isOpen: true,
-                 allowedTypes: 'image',
-                 onSelect: (url) => {
-                   onChange({ ...page, backgroundImage: url, backgroundVideoUrl: '' });
-                 }
-               });
-             }}
-             className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-all flex items-center gap-2 text-xs font-bold border border-slate-700"
-             title="Mudar Fundo"
-           >
-             <Layers size={14} /> <span className="hidden sm:inline">Fundo</span>
-           </button>
+          <button
+            onClick={() => {
+              setMediaLibraryConfig({
+                isOpen: true,
+                allowedTypes: 'image',
+                onSelect: (url) => {
+                  onChange({ ...page, backgroundImage: url, backgroundVideoUrl: '' });
+                }
+              });
+            }}
+            className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-all flex items-center gap-2 text-xs font-bold border border-slate-700"
+            title="Mudar Fundo"
+          >
+            <Layers size={14} /> <span className="hidden sm:inline">Fundo</span>
+          </button>
         </div>
       </div>
 
       <div className="flex-1 flex overflow-hidden relative">
-        
+
         {/* CANVAS AREA */}
         <div className="flex-1 overflow-auto bg-slate-950 p-8 flex items-center justify-center custom-scrollbar relative">
-           {/* Grid Background */}
-           <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ 
-             backgroundImage: `radial-gradient(#fff 1px, transparent 1px)`,
-             backgroundSize: `${rowHeight}px ${rowHeight}px`
-           }}></div>
+          {/* Grid Background */}
+          <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{
+            backgroundImage: `radial-gradient(#fff 1px, transparent 1px)`,
+            backgroundSize: `${rowHeight}px ${rowHeight}px`
+          }}></div>
 
-           <div 
-             ref={containerRef}
-             className="relative bg-black shadow-[0_0_100px_rgba(0,0,0,0.5)] border border-slate-800 overflow-hidden shrink-0"
-             style={{ 
-               width: '100%', 
-               maxWidth: '1200px',
-               aspectRatio: '16/9',
-               backgroundImage: page.backgroundImage ? `url(${page.backgroundImage})` : 'none',
-               backgroundSize: 'cover',
-               backgroundPosition: 'center'
-             }}
-           >
-             <GridLayout
-               className="layout"
-               layout={page.layout.map(w => ({ i: w.i, x: w.x, y: w.y, w: w.w, h: w.h }))}
-               cols={GRID_COLS}
-               rowHeight={rowHeight}
-               margin={[0, 0]}
-               onLayoutChange={handleLayoutChange}
-               draggableHandle=".drag-handle"
-               resizeHandle={<div className="absolute bottom-0 right-0 p-1 cursor-se-resize text-cyan-500 opacity-0 group-hover:opacity-100 transition-opacity"><MoveHorizontal size={12} /></div>}
-             >
-               {page.layout.map(w => (
-                 <div 
-                   key={w.i} 
-                   className={`group relative border transition-all ${selectedWidget === w.i ? 'border-cyan-500 ring-2 ring-cyan-500/20 z-20' : 'border-transparent hover:border-slate-700'}`}
-                   onClick={(e) => { e.stopPropagation(); setSelectedWidget(w.i); }}
-                 >
-                   <div className="drag-handle absolute top-0 left-0 w-full h-4 bg-slate-900/80 backdrop-blur-sm opacity-0 group-hover:opacity-100 cursor-move flex items-center justify-center z-10 transition-opacity">
-                      <div className="w-8 h-1 bg-slate-700 rounded-full"></div>
-                   </div>
+          <div
+            ref={containerRef}
+            className="relative bg-black shadow-[0_0_100px_rgba(0,0,0,0.5)] border border-slate-800 overflow-hidden shrink-0"
+            style={{
+              width: '100%',
+              maxWidth: '1200px',
+              aspectRatio: '16/9',
+              backgroundImage: page.backgroundImage ? `url(${page.backgroundImage})` : 'none',
+              backgroundSize: 'cover',
+              backgroundPosition: 'center'
+            }}
+          >
+            <GridLayout
+              className="layout"
+              layout={page.layout.map(w => ({ i: w.i, x: w.x, y: w.y, w: w.w, h: w.h }))}
+              cols={GRID_COLS}
+              rowHeight={rowHeight}
+              margin={[0, 0]}
+              onLayoutChange={handleLayoutChange}
+              draggableHandle=".drag-handle"
+              resizeHandle={<div className="absolute bottom-0 right-0 p-1 cursor-se-resize text-cyan-500 opacity-0 group-hover:opacity-100 transition-opacity"><MoveHorizontal size={12} /></div>}
+            >
+              {page.layout.map(w => (
+                <div
+                  key={w.i}
+                  className={`group relative border transition-all ${selectedWidget === w.i ? 'border-cyan-500 ring-2 ring-cyan-500/20 z-20' : 'border-transparent hover:border-slate-700'}`}
+                  onClick={(e) => { e.stopPropagation(); setSelectedWidget(w.i); }}
+                >
+                  <div className="drag-handle absolute top-0 left-0 w-full h-4 bg-slate-900/80 backdrop-blur-sm opacity-0 group-hover:opacity-100 cursor-move flex items-center justify-center z-10 transition-opacity">
+                    <div className="w-8 h-1 bg-slate-700 rounded-full"></div>
+                  </div>
 
-                   <div className="w-full h-full overflow-hidden pointer-events-none select-none">
-                      {renderWidgetPreview(w)}
-                   </div>
+                  <div className="w-full h-full overflow-hidden pointer-events-none select-none">
+                    {renderWidgetPreview(w)}
+                  </div>
 
-                   {selectedWidget === w.i && (
-                     <button 
-                       onClick={(e) => { e.stopPropagation(); removeWidget(w.i); }}
-                       className="absolute -top-2 -right-2 p-1.5 bg-rose-600 text-white rounded-full shadow-lg hover:bg-rose-500 transition-all z-30"
-                     >
-                       <Trash2 size={12} />
-                     </button>
-                   )}
-                 </div>
-               ))}
-             </GridLayout>
-           </div>
+                  {selectedWidget === w.i && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); removeWidget(w.i); }}
+                      className="absolute -top-2 -right-2 p-1.5 bg-rose-600 text-white rounded-full shadow-lg hover:bg-rose-500 transition-all z-30"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </GridLayout>
+          </div>
         </div>
 
         {/* PROPERTIES PANEL */}
         {selectedWidget && currentWidget && (
           <div className="w-80 bg-slate-900 border-l border-slate-800 p-6 overflow-y-auto custom-scrollbar animate-in slide-in-from-right duration-300 z-40">
-             <div className="flex justify-between items-center mb-6">
-                <h3 className="font-black text-xs uppercase tracking-widest text-slate-400 flex items-center gap-2">
-                   <Settings size={14} className="text-cyan-500" /> Propriedades
-                </h3>
-                <button onClick={() => setSelectedWidget(null)} className="text-slate-500 hover:text-white transition-colors">
-                   <X size={18} />
-                </button>
-             </div>
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="font-black text-xs uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                <Settings size={14} className="text-cyan-500" /> Propriedades
+              </h3>
+              <button onClick={() => setSelectedWidget(null)} className="text-slate-500 hover:text-white transition-colors">
+                <X size={18} />
+              </button>
+            </div>
 
-             <div className="space-y-6">
-                {/* Common Properties */}
-                {renderWidgetControls(currentWidget, updateWidgetData, setMediaLibraryConfig, setFullScreen)}
-             </div>
+            <div className="space-y-6">
+              {/* Common Properties */}
+              {renderWidgetControls(currentWidget, updateWidgetData, setMediaLibraryConfig, setFullScreen, restoreSize, originalSizes)}
+            </div>
           </div>
         )}
       </div>
-      
+
       {mediaLibraryConfig?.isOpen && (
-        <MediaLibrary 
-          onClose={() => setMediaLibraryConfig(null)} 
+        <MediaLibrary
+          onClose={() => setMediaLibraryConfig(null)}
           onSelect={mediaLibraryConfig.onSelect}
           allowedTypes={mediaLibraryConfig.allowedTypes}
         />
@@ -250,7 +277,7 @@ const SceneEditor: React.FC<SceneEditorProps> = ({ page, onChange }) => {
 
 // Helper Components
 const WidgetTool: React.FC<{ icon: React.ReactNode, label: string, onClick: () => void }> = ({ icon, label, onClick }) => (
-  <button 
+  <button
     onClick={onClick}
     className="flex flex-col items-center justify-center gap-1 p-2 min-w-[60px] bg-slate-800/50 hover:bg-indigo-600 hover:text-white text-slate-400 rounded-xl transition-all border border-slate-800 hover:border-indigo-500 group"
   >
@@ -263,8 +290,8 @@ const renderWidgetPreview = (w: LayoutItem) => {
   switch (w.type) {
     case WidgetType.TEXT:
       return (
-        <div className="w-full h-full flex items-center justify-center p-2 text-center break-words" style={{ 
-          color: w.data.color, 
+        <div className="w-full h-full flex items-center justify-center p-2 text-center break-words" style={{
+          color: w.data.color,
           fontSize: w.data.fontSize || '2vw',
           fontFamily: w.data.textConfig?.fontFamily || 'sans-serif',
           fontWeight: w.data.textConfig?.fontWeight || 'bold',
@@ -291,11 +318,14 @@ const renderWidgetPreview = (w: LayoutItem) => {
 };
 
 const renderWidgetControls = (
-  w: LayoutItem, 
-  updateData: (id: string, updates: any) => void, 
+  w: LayoutItem,
+  updateData: (id: string, updates: any) => void,
   setMediaLibraryConfig: (config: any) => void,
-  setFullScreen: (id: string) => void
+  setFullScreen: (id: string) => void,
+  restoreSize: (id: string) => void,
+  originalSizes: Record<string, { x: number; y: number; w: number; h: number }>
 ) => {
+  const isFullscreen = !!originalSizes[w.i];
   // Simplified controls for the prototype
   return (
     <div className="space-y-4">
@@ -303,17 +333,17 @@ const renderWidgetControls = (
         <>
           <div>
             <label className="text-[9px] font-black text-slate-500 uppercase mb-1 block">Conteúdo</label>
-            <textarea 
-              value={w.data.content} 
+            <textarea
+              value={w.data.content}
               onChange={e => updateData(w.i, { content: e.target.value })}
               className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-xs text-white outline-none focus:border-cyan-500 h-24"
             />
           </div>
           <div>
             <label className="text-[9px] font-black text-slate-500 uppercase mb-1 block">Cor do Texto</label>
-            <input 
-              type="color" 
-              value={w.data.color} 
+            <input
+              type="color"
+              value={w.data.color}
               onChange={e => updateData(w.i, { color: e.target.value })}
               className="w-full h-8 bg-transparent border-none cursor-pointer"
             />
@@ -323,13 +353,13 @@ const renderWidgetControls = (
       {w.type === WidgetType.IMAGE && (
         <div>
           <label className="text-[9px] font-black text-slate-500 uppercase mb-1 block">URL da Imagem</label>
-          <input 
-            type="text" 
-            value={w.data.url} 
+          <input
+            type="text"
+            value={w.data.url}
             onChange={e => updateData(w.i, { url: e.target.value })}
             className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-xs text-white outline-none focus:border-cyan-500 mb-2"
           />
-          <button 
+          <button
             onClick={() => {
               setMediaLibraryConfig({
                 isOpen: true,
@@ -349,13 +379,13 @@ const renderWidgetControls = (
       {w.type === WidgetType.VIDEO && (
         <div>
           <label className="text-[9px] font-black text-slate-500 uppercase mb-1 block">URL do Vídeo</label>
-          <input 
-            type="text" 
-            value={w.data.videoUrl} 
+          <input
+            type="text"
+            value={w.data.videoUrl}
             onChange={e => updateData(w.i, { videoUrl: e.target.value })}
             className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-xs text-white outline-none focus:border-cyan-500 mb-2"
           />
-          <button 
+          <button
             onClick={() => {
               setMediaLibraryConfig({
                 isOpen: true,
@@ -375,16 +405,16 @@ const renderWidgetControls = (
       {(w.type === WidgetType.WEATHER || w.type === WidgetType.CLOCK || w.type === WidgetType.FULL_INFO) && (
         <div>
           <label className="text-[9px] font-black text-slate-500 uppercase mb-1 block">Cidade</label>
-          <input 
-            type="text" 
-            value={w.data.city} 
+          <input
+            type="text"
+            value={w.data.city}
             onChange={e => updateData(w.i, { city: e.target.value })}
             className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-xs text-white outline-none focus:border-cyan-500 mb-2"
           />
           {w.type === WidgetType.FULL_INFO && (
             <>
               <label className="text-[9px] font-black text-slate-500 uppercase mb-1 block">Modelo Visual</label>
-              <select 
+              <select
                 className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-xs text-white outline-none focus:border-cyan-500 mb-2"
                 value={w.data.model || 'standard'}
                 onChange={(e) => updateData(w.i, { model: e.target.value })}
@@ -396,22 +426,32 @@ const renderWidgetControls = (
               </select>
 
               <label className="text-[9px] font-black text-slate-500 uppercase mb-1 block">Imagem de Fundo (Opcional)</label>
-              <input 
-                type="text" 
-                value={w.data.backgroundImage || ''} 
+              <input
+                type="text"
+                value={w.data.backgroundImage || ''}
                 onChange={e => updateData(w.i, { backgroundImage: e.target.value })}
                 className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-xs text-white outline-none focus:border-cyan-500"
                 placeholder="URL da imagem (ex: https://...)"
               />
 
-              <div className="mt-4 pt-4 border-t border-slate-800">
-                <button 
-                  onClick={() => setFullScreen(w.i)}
-                  className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition-colors shadow-lg shadow-indigo-900/20 flex items-center justify-center gap-2"
-                >
-                  <Maximize2 size={14} />
-                  Preencher Tela Inteira
-                </button>
+              <div className="mt-4 pt-4 border-t border-slate-800 space-y-2">
+                {!isFullscreen ? (
+                  <button
+                    onClick={() => setFullScreen(w.i)}
+                    className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition-colors shadow-lg shadow-indigo-900/20 flex items-center justify-center gap-2"
+                  >
+                    <Maximize2 size={14} />
+                    Preencher Tela Inteira
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => restoreSize(w.i)}
+                    className="w-full py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-xs font-bold transition-colors shadow-lg shadow-amber-900/20 flex items-center justify-center gap-2"
+                  >
+                    <Minimize2 size={14} />
+                    Restaurar Tamanho
+                  </button>
+                )}
               </div>
             </>
           )}
@@ -420,16 +460,16 @@ const renderWidgetControls = (
       {w.type === WidgetType.VIDEO && (
         <div>
           <label className="text-[9px] font-black text-slate-500 uppercase mb-1 block">Link YouTube</label>
-          <input 
-            type="text" 
-            value={w.data.videoUrl} 
+          <input
+            type="text"
+            value={w.data.videoUrl}
             onChange={e => updateData(w.i, { videoUrl: e.target.value })}
             className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-xs text-white outline-none focus:border-cyan-500"
           />
-          
+
           <div className="mt-3">
             <label className="text-[9px] font-black text-slate-500 uppercase mb-1 block">Qualidade YouTube</label>
-            <select 
+            <select
               value={w.data.videoConfig?.youtubeQuality || 'highres'}
               onChange={(e) => updateData(w.i, { videoConfig: { ...w.data.videoConfig, youtubeQuality: e.target.value } })}
               className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-xs text-white outline-none focus:border-cyan-500"
@@ -443,34 +483,54 @@ const renderWidgetControls = (
             </select>
           </div>
 
-          <div className="mt-4 pt-4 border-t border-slate-800">
-            <button 
-              onClick={() => setFullScreen(w.i)}
-              className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition-colors shadow-lg shadow-indigo-900/20 flex items-center justify-center gap-2"
-            >
-              <Maximize2 size={14} />
-              Preencher Tela Inteira
-            </button>
+          <div className="mt-4 pt-4 border-t border-slate-800 space-y-2">
+            {!isFullscreen ? (
+              <button
+                onClick={() => setFullScreen(w.i)}
+                className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition-colors shadow-lg shadow-indigo-900/20 flex items-center justify-center gap-2"
+              >
+                <Maximize2 size={14} />
+                Preencher Tela Inteira
+              </button>
+            ) : (
+              <button
+                onClick={() => restoreSize(w.i)}
+                className="w-full py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-xs font-bold transition-colors shadow-lg shadow-amber-900/20 flex items-center justify-center gap-2"
+              >
+                <Minimize2 size={14} />
+                Restaurar Tamanho
+              </button>
+            )}
           </div>
         </div>
       )}
       {w.type === WidgetType.RSS && (
         <div>
           <label className="text-[9px] font-black text-slate-500 uppercase mb-1 block">URL do Feed RSS</label>
-          <input 
-            type="text" 
-            value={w.data.rssUrl} 
+          <input
+            type="text"
+            value={w.data.rssUrl}
             onChange={e => updateData(w.i, { rssUrl: e.target.value })}
             className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-xs text-white outline-none focus:border-cyan-500"
           />
-          <div className="mt-4 pt-4 border-t border-slate-800">
-            <button 
-              onClick={() => setFullScreen(w.i)}
-              className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition-colors shadow-lg shadow-indigo-900/20 flex items-center justify-center gap-2"
-            >
-              <Maximize2 size={14} />
-              Preencher Tela Inteira
-            </button>
+          <div className="mt-4 pt-4 border-t border-slate-800 space-y-2">
+            {!isFullscreen ? (
+              <button
+                onClick={() => setFullScreen(w.i)}
+                className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition-colors shadow-lg shadow-indigo-900/20 flex items-center justify-center gap-2"
+              >
+                <Maximize2 size={14} />
+                Preencher Tela Inteira
+              </button>
+            ) : (
+              <button
+                onClick={() => restoreSize(w.i)}
+                className="w-full py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-xs font-bold transition-colors shadow-lg shadow-amber-900/20 flex items-center justify-center gap-2"
+              >
+                <Minimize2 size={14} />
+                Restaurar Tamanho
+              </button>
+            )}
           </div>
         </div>
       )}

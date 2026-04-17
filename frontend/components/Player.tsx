@@ -4,7 +4,7 @@ import { useParams } from 'react-router-dom';
 import { CloudSun, Rss, Monitor, Loader2, Home, ChevronRight, MoreHorizontal, ChevronLeft, Cloud, CloudRain, CloudLightning, Snowflake, Sun, Search, Map } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, AreaChart, Area, ComposedChart, Line } from 'recharts';
 import { motion, AnimatePresence } from 'motion/react';
-import { getDisplayBySlug, checkDeviceStatus, registerDevice, getDisplayById, getBroadcasts, heartbeatDevice } from '../services/storage';
+import { getDisplayBySlug, checkDeviceStatus, registerDevice, getDisplayById, getBroadcasts, heartbeatDevice, getDisplayVersion } from '../services/storage';
 import { Display, Page, WidgetType, Device, Broadcast } from '../types';
 
 const isYouTubeUrl = (url: string) => {
@@ -288,7 +288,7 @@ const Player: React.FC = () => {
 
     const interval = setInterval(() => {
       heartbeatDevice(deviceId);
-    }, 30000); // A cada 30 segundos
+    }, 120000); // A cada 2 minutos (reduzido de 30s para economizar egress)
 
     return () => clearInterval(interval);
   }, [deviceId]);
@@ -303,7 +303,7 @@ const Player: React.FC = () => {
         setDeviceStatus('linked');
         await loadDisplayById(device.display_id);
       }
-    }, 5000);
+    }, 10000); // A cada 10 segundos (reduzido de 5s)
 
     return () => clearInterval(interval);
   }, [slug, deviceStatus, deviceId]);
@@ -314,14 +314,19 @@ const Player: React.FC = () => {
 
     const interval = setInterval(async () => {
       if (slug) {
-        await loadDisplayBySlug(slug);
+        // Primeiro checa a versão (ultra-leve ~20 bytes) antes de buscar o display completo
+        const version = await getDisplayVersion(slug);
+        // null = 304 Not Modified OU erro — não precisa atualizar
+        if (version !== null && version !== lastUpdateRef.current) {
+          await loadDisplayBySlug(slug);
+        }
       } else if (deviceId) {
         const device = await checkDeviceStatus(deviceId);
         if (device && device.display_id) {
            await loadDisplayById(device.display_id);
         }
       }
-    }, 15000);
+    }, 60000); // A cada 60 segundos (reduzido de 15s — economia de ~96% de egress)
 
     return () => clearInterval(interval);
   }, [deviceStatus, display, slug, deviceId]);
