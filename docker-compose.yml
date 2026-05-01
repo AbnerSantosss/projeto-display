@@ -42,9 +42,8 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        # ATENÇÃO: Mude esta variável para a URL pública onde sua API (backend) estará disponível
-        # Como você usa Cloudflare, provavelmente será algo como https://api.seudominio.com/api
-        - VITE_API_URL=http://localhost:3005/api
+        # Usamos rota relativa /api para que o NGINX faça o proxy reverso
+        - VITE_API_URL=/api
     restart: unless-stopped
     ports:
       - "8095:80"
