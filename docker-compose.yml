@@ -21,7 +21,7 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     ports:
-      - "3001:3001"
+      - "3005:3001"
     environment:
       - DATABASE_URL=postgresql://display_user:display_password_secreta@db:5432/display_db?schema=public
       - JWT_SECRET=${JWT_SECRET:-mude_isso_em_producao_super_secreto}
@@ -44,10 +44,10 @@ services:
       args:
         # ATENÇÃO: Mude esta variável para a URL pública onde sua API (backend) estará disponível
         # Como você usa Cloudflare, provavelmente será algo como https://api.seudominio.com/api
-        - VITE_API_URL=http://localhost:3001/api
+        - VITE_API_URL=http://localhost:3005/api
     restart: unless-stopped
     ports:
-      - "8080:80"
+      - "8095:80"
     networks:
       - display_network
 
