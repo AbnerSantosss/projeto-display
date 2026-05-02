@@ -50,6 +50,22 @@ export const deleteUser = async (id: string): Promise<void> => {
   await api.delete(`/users/${id}`);
 };
 
+export const resendInvite = async (userId: string): Promise<{ message: string }> => {
+  return api.post<{ message: string }>(`/users/${userId}/resend-invite`);
+};
+
+export const adminSendPasswordReset = async (userId: string): Promise<{ message: string }> => {
+  return api.post<{ message: string }>(`/users/${userId}/send-reset`);
+};
+
+export const forgotPassword = async (email: string): Promise<{ message: string }> => {
+  return api.post<{ message: string }>('/users/forgot-password', { email });
+};
+
+export const resetPassword = async (token: string, password: string): Promise<{ message: string }> => {
+  return api.post<{ message: string }>('/users/reset-password', { token, password });
+};
+
 // ==============================================================================
 // SETTINGS FUNCTIONS (SMTP)
 // ==============================================================================

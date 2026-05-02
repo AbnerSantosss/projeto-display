@@ -40,6 +40,69 @@ router.post('/invite', authMiddleware, async (req: Request, res: Response): Prom
   }
 });
 
+// POST /api/users/:id/resend-invite (ADMIN — reenvia convite com nova senha)
+router.post('/:id/resend-invite', authMiddleware, adminMiddleware, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const result = await userService.resendInvite(req.params.id);
+    res.json(result);
+  } catch (error: any) {
+    console.error('Erro ao reenviar convite:', error);
+    res.status(400).json({ error: error.message || 'Erro ao reenviar convite.' });
+  }
+});
+
+// POST /api/users/:id/send-reset (ADMIN — envia email de redefinição para o usuário)
+router.post('/:id/send-reset', authMiddleware, adminMiddleware, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const result = await userService.adminSendPasswordReset(req.params.id);
+    res.json(result);
+  } catch (error: any) {
+    console.error('Erro ao enviar reset de senha:', error);
+    res.status(400).json({ error: error.message || 'Erro ao enviar reset de senha.' });
+  }
+});
+
+// POST /api/users/forgot-password (PÚBLICO — solicita reset de senha)
+router.post('/forgot-password', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { email } = req.body;
+
+    if (!email || !email.includes('@')) {
+      res.status(400).json({ error: 'Informe um e-mail válido.' });
+      return;
+    }
+
+    const result = await userService.requestPasswordReset(email.trim());
+    res.json(result);
+  } catch (error: any) {
+    console.error('Erro no forgot password:', error);
+    res.status(400).json({ error: error.message || 'Erro ao processar solicitação.' });
+  }
+});
+
+// POST /api/users/reset-password (PÚBLICO — reseta a senha com token)
+router.post('/reset-password', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { token, password } = req.body;
+
+    if (!token || !password) {
+      res.status(400).json({ error: 'Token e nova senha são obrigatórios.' });
+      return;
+    }
+
+    if (password.length < 6) {
+      res.status(400).json({ error: 'A senha deve ter pelo menos 6 caracteres.' });
+      return;
+    }
+
+    const result = await userService.resetPassword(token, password);
+    res.json(result);
+  } catch (error: any) {
+    console.error('Erro ao redefinir senha:', error);
+    res.status(400).json({ error: error.message || 'Erro ao redefinir senha.' });
+  }
+});
+
 // DELETE /api/users/:id (ADMIN ONLY — somente admin pode excluir)
 router.delete('/:id', authMiddleware, adminMiddleware, async (req: Request, res: Response): Promise<void> => {
   try {

@@ -1,6 +1,8 @@
 import { userRepository } from '../repositories/user.repository';
 import { hashPassword, comparePassword, generateToken } from './auth.service';
-import { testSmtpConnection, sendInviteEmail } from './email.service';
+import { testSmtpConnection, sendInviteEmail, sendResetPasswordEmail } from './email.service';
+import prisma from '../lib/prisma';
+import crypto from 'crypto';
 
 export class UserService {
   async login(loginInput: string, password: string) {
@@ -55,10 +57,6 @@ export class UserService {
 
   /**
    * Cria um novo usuário via convite por e-mail.
-   * 1. Verifica se o SMTP está funcionando.
-   * 2. Gera uma senha aleatória.
-   * 3. Salva no banco com hash.
-   * 4. Envia e-mail com as credenciais.
    */
   async inviteUser(email: string, role: string = 'user') {
     // 1. Validar SMTP antes de tudo
@@ -93,6 +91,109 @@ export class UserService {
       email: user.email,
       role: user.role,
     };
+  }
+
+  /**
+   * Reenvia o convite para um usuário existente com uma nova senha.
+   */
+  async resendInvite(userId: string) {
+    const user = await userRepository.findById(userId);
+    if (!user) throw new Error('Usuário não encontrado.');
+
+    // Validar SMTP
+    const smtpCheck = await testSmtpConnection();
+    if (!smtpCheck.ok) {
+      throw new Error(`Provedor de e-mail não configurado: ${smtpCheck.error}`);
+    }
+
+    // Gerar nova senha
+    const plainPassword = this.generateRandomPassword();
+    const hashedPwd = await hashPassword(plainPassword);
+
+    // Atualizar senha no banco
+    await userRepository.updatePassword(userId, hashedPwd);
+
+    // Enviar email
+    await sendInviteEmail(user.email, plainPassword);
+
+    return { message: `Convite reenviado para ${user.email}` };
+  }
+
+  /**
+   * Solicita redefinição de senha — gera token e envia por e-mail.
+   */
+  async requestPasswordReset(email: string) {
+    const user = await userRepository.findByEmail(email);
+    if (!user) {
+      // Não revelar se o email existe (segurança)
+      return { message: 'Se o e-mail estiver cadastrado, você receberá as instruções.' };
+    }
+
+    // Validar SMTP
+    const smtpCheck = await testSmtpConnection();
+    if (!smtpCheck.ok) {
+      throw new Error('Sistema de e-mail temporariamente indisponível.');
+    }
+
+    // Gerar token seguro
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hora
+
+    // Salvar no banco
+    await prisma.passwordReset.create({
+      data: { email: user.email, token, expiresAt },
+    });
+
+    // Enviar email
+    await sendResetPasswordEmail(user.email, token);
+
+    return { message: 'Se o e-mail estiver cadastrado, você receberá as instruções.' };
+  }
+
+  /**
+   * Valida token de reset e atualiza a senha.
+   */
+  async resetPassword(token: string, newPassword: string) {
+    // Buscar token válido
+    const resetRecord = await prisma.passwordReset.findFirst({
+      where: {
+        token,
+        used: false,
+        expiresAt: { gt: new Date() },
+      },
+    });
+
+    if (!resetRecord) {
+      throw new Error('Link de redefinição inválido ou expirado.');
+    }
+
+    // Buscar usuário
+    const user = await userRepository.findByEmail(resetRecord.email);
+    if (!user) {
+      throw new Error('Usuário não encontrado.');
+    }
+
+    // Hash nova senha
+    const hashedPwd = await hashPassword(newPassword);
+    await userRepository.updatePassword(user.id, hashedPwd);
+
+    // Marcar token como usado
+    await prisma.passwordReset.update({
+      where: { id: resetRecord.id },
+      data: { used: true },
+    });
+
+    return { message: 'Senha redefinida com sucesso!' };
+  }
+
+  /**
+   * Admin envia email de redefinição para um usuário específico.
+   */
+  async adminSendPasswordReset(userId: string) {
+    const user = await userRepository.findById(userId);
+    if (!user) throw new Error('Usuário não encontrado.');
+
+    return this.requestPasswordReset(user.email);
   }
 
   /** Método legado de criação (sem e-mail) — mantido para seed/scripts */

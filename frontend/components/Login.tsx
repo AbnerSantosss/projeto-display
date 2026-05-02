@@ -147,7 +147,7 @@ const Login: React.FC = () => {
                 <span className={`text-xs font-medium transition-colors ${rememberMe ? 'text-cyan-400' : 'text-slate-500 group-hover:text-slate-400'}`}>Lembrar meu usuário</span>
               </label>
               
-              <a href="#" className="text-xs font-medium text-slate-500 hover:text-cyan-400 transition-colors">Esqueceu a senha?</a>
+              <button type="button" onClick={() => navigate('/forgot-password')} className="text-xs font-medium text-slate-500 hover:text-cyan-400 transition-colors">Esqueceu a senha?</button>
             </div>
 
             {error && (

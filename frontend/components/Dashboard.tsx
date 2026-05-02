@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Monitor, Edit3, Copy, Trash2, Check, RefreshCw, ExternalLink, Loader2, X, Zap, LogOut, Users as UsersIcon, Shield, Tv, Link as LinkIcon, Unplug, Calendar, FileImage, Settings, Mail, CheckCircle, XCircle, Send, AlertTriangle } from 'lucide-react';
-import { getDisplays, deleteDisplay, saveDisplay, getCurrentUser, logout, getUsers, saveUser, deleteUser, getDevices, linkDevice, unlinkDevice, getSmtpSettings, saveSmtpSettings, testSmtpConnection, getSmtpStatus } from '../services/storage';
+import { Plus, Monitor, Edit3, Copy, Trash2, Check, RefreshCw, ExternalLink, Loader2, X, Zap, LogOut, Users as UsersIcon, Shield, Tv, Link as LinkIcon, Unplug, Calendar, FileImage, Settings, Mail, CheckCircle, XCircle, Send, AlertTriangle, KeyRound, RotateCcw, MoreVertical } from 'lucide-react';
+import { getDisplays, deleteDisplay, saveDisplay, getCurrentUser, logout, getUsers, saveUser, deleteUser, resendInvite, adminSendPasswordReset, getDevices, linkDevice, unlinkDevice, getSmtpSettings, saveSmtpSettings, testSmtpConnection, getSmtpStatus } from '../services/storage';
 import { Display, User, Device } from '../types';
 import { MediaLibrary } from './MediaLibrary';
 
@@ -428,11 +428,34 @@ const Dashboard: React.FC = () => {
                              <p className="text-[10px] text-slate-500 font-mono">{u.role === 'admin' ? 'Administrador' : 'Usuário'}</p>
                           </div>
                        </div>
-                       {/* Botão excluir: somente admin pode ver */}
+                       {/* Ações: somente admin pode ver para usuários não-admin */}
                        {u.role !== 'admin' && currentUser?.role === 'admin' && (
-                         <button onClick={() => handleDeleteUser(u.id)} disabled={userActionLoading} className="p-2 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors disabled:opacity-50">
-                            <Trash2 size={16} />
-                         </button>
+                         <div className="flex items-center gap-1">
+                            <button 
+                              onClick={async () => { try { await resendInvite(u.id); alert('Convite reenviado com sucesso!'); } catch(e: any) { alert('Erro: ' + e.message); } }}
+                              disabled={userActionLoading}
+                              title="Reenviar Convite (nova senha)"
+                              className="p-2 text-cyan-400 hover:bg-cyan-500/10 rounded-lg transition-colors disabled:opacity-50"
+                            >
+                               <RotateCcw size={14} />
+                            </button>
+                            <button 
+                              onClick={async () => { try { await adminSendPasswordReset(u.id); alert('Email de redefinição de senha enviado!'); } catch(e: any) { alert('Erro: ' + e.message); } }}
+                              disabled={userActionLoading}
+                              title="Enviar Redefinição de Senha"
+                              className="p-2 text-amber-400 hover:bg-amber-500/10 rounded-lg transition-colors disabled:opacity-50"
+                            >
+                               <KeyRound size={14} />
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteUser(u.id)}
+                              disabled={userActionLoading}
+                              title="Excluir Usuário"
+                              className="p-2 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors disabled:opacity-50"
+                            >
+                               <Trash2 size={14} />
+                            </button>
+                         </div>
                        )}
                        {u.role === 'admin' && <Shield size={16} className="text-slate-600 mx-2" />}
                     </div>

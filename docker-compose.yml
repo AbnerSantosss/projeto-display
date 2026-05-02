@@ -28,6 +28,7 @@ services:
       - PORT=3001
       # Configure aqui a URL do seu frontend (ex: https://display.seudominio.com)
       - CORS_ORIGINS=*
+      - APP_URL=${APP_URL:-https://display.proxserverabner.site}
     depends_on:
       - db
     volumes:

@@ -6,6 +6,8 @@ import Editor from './components/Editor';
 import Scheduler from './components/Scheduler';
 import Player from './components/Player';
 import Login from './components/Login';
+import ForgotPassword from './components/ForgotPassword';
+import ResetPassword from './components/ResetPassword';
 import { getCurrentUser } from './services/storage';
 import { Loader2 } from 'lucide-react';
 
@@ -56,6 +58,8 @@ const App: React.FC = () => {
       <div className="min-h-screen bg-slate-950 text-slate-100 selection:bg-cyan-500/30 selection:text-cyan-200">
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           
           {/* Rotas Protegidas */}
           <Route path="/" element={

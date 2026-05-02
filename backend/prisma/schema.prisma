@@ -53,3 +53,12 @@ model Setting {
   value     String   @db.Text
   updatedAt DateTime @updatedAt
 }
+
+model PasswordReset {
+  id        String   @id @default(uuid())
+  email     String
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
