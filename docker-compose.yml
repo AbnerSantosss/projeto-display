@@ -32,9 +32,9 @@ services:
       - db
     networks:
       - display_network
-    # Roda as migrations do Prisma antes de subir o servidor
+    # Cria/atualiza tabelas no Postgres + cria admin + inicia servidor
     command: >
-      sh -c "npx prisma migrate deploy && npm start"
+      sh -c "npx prisma db push --skip-generate && node prisma/seed-prod.js && npm start"
 
   # 3. Frontend (React + Vite servido pelo Nginx)
   frontend:

@@ -1,32 +1,34 @@
-import dotenv from 'dotenv';
-dotenv.config();
+// =============================================================
+// SEED DE PRODUÇÃO — roda dentro do container (Node.js puro)
+// Cria o usuário admin se não existir (seguro para re-execução)
+// =============================================================
 
-import { PrismaClient } from '@prisma/client';
-import bcrypt from 'bcryptjs';
+const { PrismaClient } = require('@prisma/client');
+const bcrypt = require('bcryptjs');
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Executando seed do banco de dados...');
+  console.log('🌱 Executando seed de produção...');
 
   // ── Admin principal (Abner) ──
-  const abnerPassword = await bcrypt.hash('A@b.26%19abner', 10);
+  const password = await bcrypt.hash('A@b.26%19abner', 10);
 
-  const abner = await prisma.user.upsert({
+  const admin = await prisma.user.upsert({
     where: { username: 'abnersantos2025' },
     update: {},
     create: {
       username: 'abnersantos2025',
       email: 'abnersantos2025@officecom.com',
-      password: abnerPassword,
+      password: password,
       role: 'admin',
     },
   });
 
-  console.log(`✅ Admin criado: ${abner.username} (role: ${abner.role})`);
+  console.log(`✅ Admin: ${admin.username} (${admin.role})`);
 
-  // Cria display de demonstração
-  const demoDisplay = await prisma.display.upsert({
+  // ── Display de demonstração ──
+  const demo = await prisma.display.upsert({
     where: { slug: 'demo' },
     update: {},
     create: {
@@ -61,14 +63,13 @@ async function main() {
     },
   });
 
-  console.log(`✅ Display demo criado: ${demoDisplay.name} (slug: ${demoDisplay.slug})`);
-  console.log('');
-  console.log('🎉 Seed finalizado com sucesso!');
+  console.log(`✅ Display demo: ${demo.name} (slug: ${demo.slug})`);
+  console.log('🎉 Seed finalizado!');
 }
 
 main()
   .catch((e) => {
-    console.error('Erro no seed:', e);
+    console.error('❌ Erro no seed:', e);
     process.exit(1);
   })
   .finally(async () => {
