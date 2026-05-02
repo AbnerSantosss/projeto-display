@@ -43,8 +43,8 @@ router.post('/upload', authMiddleware, upload.single('file'), async (req: Reques
       });
     } else {
       // Modo local: arquivo já foi salvo pelo multer diskStorage
-      const baseUrl = `${req.protocol}://${req.get('host') || 'localhost'}`;
-      url = `${baseUrl}/uploads/${req.file.filename}`;
+      // Usa caminho relativo para funcionar atrás de reverse proxy (Nginx/Cloudflare)
+      url = `/uploads/${req.file.filename}`;
     }
 
     res.json({ url, filename: req.file.filename || url.split('/').pop() });
@@ -61,8 +61,8 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
       const files = await mediaService.listFilesR2();
       res.json(files);
     } else {
-      const baseUrl = `${req.protocol}://${req.get('host') || 'localhost'}`;
-      res.json(mediaService.listFiles(baseUrl));
+      // Usa string vazia para gerar caminhos relativos (/uploads/...)
+      res.json(mediaService.listFiles(''));
     }
   } catch (error: any) {
     console.error('Erro ao listar mídia:', error);

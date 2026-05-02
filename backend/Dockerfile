@@ -23,6 +23,9 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
 
+# Garante que a pasta de uploads existe
+RUN mkdir -p /app/uploads
+
 EXPOSE 3001
 
 # O comando de start será sobrescrito no docker-compose para rodar as migrações antes

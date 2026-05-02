@@ -30,6 +30,8 @@ services:
       - CORS_ORIGINS=*
     depends_on:
       - db
+    volumes:
+      - uploads_data:/app/uploads
     networks:
       - display_network
     # Cria/atualiza tabelas no banco + cria admin + inicia o servidor
@@ -73,3 +75,4 @@ networks:
 volumes:
   pgdata:
   pgadmin_data:
+  uploads_data:
