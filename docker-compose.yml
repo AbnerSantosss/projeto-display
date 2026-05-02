@@ -32,7 +32,7 @@ services:
       - db
     networks:
       - display_network
-    # Cria/atualiza tabelas no Postgres + cria admin + inicia servidor
+    # Cria/atualiza tabelas no banco + cria admin + inicia o servidor
     command: >
       sh -c "npx prisma db push --skip-generate && node prisma/seed-prod.js && npm start"
 
@@ -50,9 +50,26 @@ services:
     networks:
       - display_network
 
+  # 4. pgAdmin — Interface visual para o banco de dados
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: abnersantos2025@admin.com
+      PGADMIN_DEFAULT_PASSWORD: A@b.26%19abner
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - db
+    networks:
+      - display_network
+
 networks:
   display_network:
     driver: bridge
 
 volumes:
   pgdata:
+  pgadmin_data:
