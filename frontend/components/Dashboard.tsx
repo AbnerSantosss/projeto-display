@@ -417,49 +417,72 @@ const Dashboard: React.FC = () => {
                <div className="space-y-2">
                   <h4 className="text-xs font-black text-slate-500 uppercase mb-2">Usuários Cadastrados</h4>
                   {usersList.length === 0 && <p className="text-slate-600 text-xs">Carregando usuários...</p>}
-                  {usersList.map(u => (
-                    <div key={u.id} className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg border border-slate-700">
-                       <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${u.role === 'admin' ? 'bg-indigo-500 text-white' : 'bg-slate-700 text-slate-300'}`}>
-                             {u.role === 'admin' ? 'A' : 'U'}
+                  {usersList.map(u => {
+                    const hasLoggedIn = !!u.lastLogin;
+                    const isSelf = u.id === currentUser?.id;
+                    const isAdmin = currentUser?.role === 'admin';
+                    return (
+                    <div key={u.id} className="p-3 bg-slate-800/50 rounded-xl border border-slate-700 hover:border-slate-600 transition-all">
+                       {/* Linha principal: avatar + info + badge */}
+                       <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3 min-w-0">
+                             <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0 ${u.role === 'admin' ? 'bg-indigo-500 text-white' : 'bg-slate-700 text-slate-300'}`}>
+                                {u.role === 'admin' ? 'A' : 'U'}
+                             </div>
+                             <div className="min-w-0">
+                                <div className="flex items-center gap-1.5">
+                                   <p className="font-bold text-sm text-slate-200 truncate">{u.email || u.username}</p>
+                                   {hasLoggedIn ? (
+                                     <span title="Já acessou o sistema" className="flex items-center gap-0.5 bg-emerald-500/10 text-emerald-400 text-[9px] font-bold px-1.5 py-0.5 rounded-full border border-emerald-500/20 flex-shrink-0">
+                                       <CheckCircle size={10} /> Verificado
+                                     </span>
+                                   ) : (
+                                     <span title="Nunca acessou" className="flex items-center gap-0.5 bg-amber-500/10 text-amber-400 text-[9px] font-bold px-1.5 py-0.5 rounded-full border border-amber-500/20 flex-shrink-0">
+                                       <AlertTriangle size={10} /> Pendente
+                                     </span>
+                                   )}
+                                </div>
+                                <p className="text-[10px] text-slate-500 font-mono">
+                                  {u.role === 'admin' ? 'Administrador' : 'Usuário'}
+                                  {hasLoggedIn && u.lastLogin && <span className="ml-1 text-slate-600">· Último acesso: {new Date(u.lastLogin).toLocaleDateString('pt-BR')}</span>}
+                                </p>
+                             </div>
                           </div>
-                          <div>
-                             <p className="font-bold text-sm text-slate-200">{u.email || u.username}</p>
-                             <p className="text-[10px] text-slate-500 font-mono">{u.role === 'admin' ? 'Administrador' : 'Usuário'}</p>
-                          </div>
+                          {isSelf && <span className="text-[9px] text-cyan-500 font-bold px-2 py-0.5 bg-cyan-500/10 rounded-full border border-cyan-500/20 flex-shrink-0">Você</span>}
                        </div>
-                       {/* Ações: somente admin pode ver para usuários não-admin */}
-                       {u.role !== 'admin' && currentUser?.role === 'admin' && (
-                         <div className="flex items-center gap-1">
+
+                       {/* Ações — visíveis para admin, exceto no próprio usuário */}
+                       {isAdmin && !isSelf && (
+                         <div className="flex items-center gap-2 mt-2.5 pt-2.5 border-t border-slate-700/50">
+                            {!hasLoggedIn ? (
+                              <button 
+                                onClick={async () => { try { await resendInvite(u.id); alert('Convite reenviado! Uma nova senha foi gerada e enviada por e-mail.'); } catch(e: any) { alert('Erro: ' + e.message); } }}
+                                disabled={userActionLoading}
+                                className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-cyan-400 bg-cyan-500/10 hover:bg-cyan-500/20 rounded-lg border border-cyan-500/20 transition-all disabled:opacity-50"
+                              >
+                                 <RotateCcw size={12} /> Reenviar Convite
+                              </button>
+                            ) : (
+                              <button 
+                                onClick={async () => { try { await adminSendPasswordReset(u.id); alert('Email de redefinição de senha enviado com sucesso!'); } catch(e: any) { alert('Erro: ' + e.message); } }}
+                                disabled={userActionLoading}
+                                className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 rounded-lg border border-amber-500/20 transition-all disabled:opacity-50"
+                              >
+                                 <KeyRound size={12} /> Redefinir Senha
+                              </button>
+                            )}
                             <button 
-                              onClick={async () => { try { await resendInvite(u.id); alert('Convite reenviado com sucesso!'); } catch(e: any) { alert('Erro: ' + e.message); } }}
+                              onClick={() => { if(confirm(`Tem certeza que deseja excluir ${u.email || u.username}?`)) handleDeleteUser(u.id); }}
                               disabled={userActionLoading}
-                              title="Reenviar Convite (nova senha)"
-                              className="p-2 text-cyan-400 hover:bg-cyan-500/10 rounded-lg transition-colors disabled:opacity-50"
+                              className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 rounded-lg border border-rose-500/20 transition-all disabled:opacity-50 ml-auto"
                             >
-                               <RotateCcw size={14} />
-                            </button>
-                            <button 
-                              onClick={async () => { try { await adminSendPasswordReset(u.id); alert('Email de redefinição de senha enviado!'); } catch(e: any) { alert('Erro: ' + e.message); } }}
-                              disabled={userActionLoading}
-                              title="Enviar Redefinição de Senha"
-                              className="p-2 text-amber-400 hover:bg-amber-500/10 rounded-lg transition-colors disabled:opacity-50"
-                            >
-                               <KeyRound size={14} />
-                            </button>
-                            <button 
-                              onClick={() => handleDeleteUser(u.id)}
-                              disabled={userActionLoading}
-                              title="Excluir Usuário"
-                              className="p-2 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors disabled:opacity-50"
-                            >
-                               <Trash2 size={14} />
+                               <Trash2 size={12} /> Excluir
                             </button>
                          </div>
                        )}
-                       {u.role === 'admin' && <Shield size={16} className="text-slate-600 mx-2" />}
                     </div>
-                  ))}
+                  );
+                  })}
                </div>
             </div>
           </div>

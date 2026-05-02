@@ -20,6 +20,12 @@ export class UserService {
       return null;
     }
 
+    // Registra último login
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lastLogin: new Date() },
+    });
+
     const token = generateToken({
       id: user.id,
       email: user.email,

@@ -3,7 +3,7 @@ import prisma from '../lib/prisma';
 export class UserRepository {
   async findAll() {
     return prisma.user.findMany({
-      select: { id: true, username: true, email: true, role: true },
+      select: { id: true, username: true, email: true, role: true, lastLogin: true },
     });
   }
 

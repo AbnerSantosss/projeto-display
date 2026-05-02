@@ -145,6 +145,7 @@ export interface User {
   username: string;
   email?: string; // Novo campo para login robusto
   role: 'admin' | 'user';
+  lastLogin?: string | null; // null = nunca acessou
   // Senha removida da interface frontend por segurança
 }
 
