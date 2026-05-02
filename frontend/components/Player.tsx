@@ -270,7 +270,20 @@ const Player: React.FC = () => {
         let code = device?.pairing_code;
         if (!code) {
           code = generatePairingCode();
-          await registerDevice(storedDeviceId, code);
+          // Tenta registrar com retry para garantir que chega ao banco
+          let registered = false;
+          for (let attempt = 0; attempt < 3 && !registered; attempt++) {
+            try {
+              await registerDevice(storedDeviceId, code);
+              registered = true;
+            } catch (err) {
+              console.error(`Tentativa ${attempt + 1} de registro falhou:`, err);
+              if (attempt < 2) await new Promise(r => setTimeout(r, 2000));
+            }
+          }
+          if (!registered) {
+            console.error('Falha ao registrar dispositivo após 3 tentativas');
+          }
         }
         setPairingCode(code);
       }
