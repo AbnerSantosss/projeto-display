@@ -39,6 +39,7 @@ const Dashboard: React.FC = () => {
   const [smtpUser, setSmtpUser] = useState('');
   const [smtpPass, setSmtpPass] = useState('');
   const [smtpConfigured, setSmtpConfigured] = useState(false);
+  const [smtpHasSavedPass, setSmtpHasSavedPass] = useState(false);
   const [smtpTestResult, setSmtpTestResult] = useState<{ ok: boolean; message: string } | null>(null);
   const [smtpLoading, setSmtpLoading] = useState(false);
   
@@ -237,7 +238,14 @@ const Dashboard: React.FC = () => {
     try {
       const cfg = await getSmtpSettings();
       setSmtpUser(cfg.smtp_user || '');
-      setSmtpPass(cfg.smtp_pass === '••••••••' ? '' : cfg.smtp_pass);
+      // Se a senha está mascarada, significa que já foi salva
+      if (cfg.smtp_pass === '••••••••') {
+        setSmtpPass('');
+        setSmtpHasSavedPass(true);
+      } else {
+        setSmtpPass(cfg.smtp_pass || '');
+        setSmtpHasSavedPass(false);
+      }
     } catch {
       // Ignora
     } finally {
@@ -247,16 +255,24 @@ const Dashboard: React.FC = () => {
 
   const handleSaveSmtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!smtpUser || !smtpPass) {
-      alert('Preencha o e-mail e a senha de aplicativo.');
+    // Se já tem senha salva e não digitou nova, só precisa do email
+    if (!smtpUser) {
+      alert('Preencha o e-mail.');
+      return;
+    }
+    if (!smtpPass && !smtpHasSavedPass) {
+      alert('Preencha a senha de aplicativo.');
       return;
     }
     setSmtpLoading(true);
     try {
-      await saveSmtpSettings(smtpUser.trim(), smtpPass.trim());
+      // Se o campo de senha está vazio mas já tinha senha salva, envia flag especial
+      const passToSend = smtpPass || (smtpHasSavedPass ? '__KEEP_CURRENT__' : '');
+      await saveSmtpSettings(smtpUser.trim(), passToSend);
       setSmtpTestResult(null);
       alert('Configurações SMTP salvas com sucesso!');
       setSmtpConfigured(true);
+      setSmtpHasSavedPass(true);
     } catch (err: any) {
       alert('Erro ao salvar: ' + err.message);
     } finally {
@@ -466,7 +482,7 @@ const Dashboard: React.FC = () => {
                   type="password" 
                   value={smtpPass}
                   onChange={(e) => setSmtpPass(e.target.value)}
-                  placeholder="xxxx xxxx xxxx xxxx"
+                  placeholder={smtpHasSavedPass ? '(senha salva — deixe vazio para manter)' : 'xxxx xxxx xxxx xxxx'}
                   className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-slate-100 placeholder:text-slate-600 focus:border-cyan-500 outline-none transition-all text-sm font-mono tracking-wider"
                 />
               </div>
@@ -487,14 +503,14 @@ const Dashboard: React.FC = () => {
                 <button 
                   type="button"
                   onClick={handleTestSmtp}
-                  disabled={smtpLoading || !smtpUser || !smtpPass}
+                  disabled={smtpLoading || !smtpUser || (!smtpPass && !smtpHasSavedPass)}
                   className="px-4 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-sm transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {smtpLoading ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />} Testar Conexão
                 </button>
                 <button 
                   type="submit"
-                  disabled={smtpLoading || !smtpUser || !smtpPass}
+                  disabled={smtpLoading || !smtpUser || (!smtpPass && !smtpHasSavedPass)}
                   className="px-6 py-2.5 rounded-lg bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-bold text-sm shadow-[0_0_20px_rgba(34,211,238,0.3)] transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Check size={14} /> Salvar

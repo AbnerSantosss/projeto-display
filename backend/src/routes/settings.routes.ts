@@ -25,14 +25,26 @@ router.post('/smtp', authMiddleware, adminMiddleware, async (req: Request, res: 
   try {
     const { smtp_user, smtp_pass } = req.body;
 
-    if (!smtp_user || !smtp_pass) {
-      res.status(400).json({ error: 'E-mail e Senha de Aplicativo são obrigatórios.' });
+    if (!smtp_user) {
+      res.status(400).json({ error: 'E-mail é obrigatório.' });
+      return;
+    }
+
+    // Se a senha é __KEEP_CURRENT__, mantém a senha atual do banco
+    let passToSave = smtp_pass;
+    if (smtp_pass === '__KEEP_CURRENT__') {
+      const currentConfig = await settingsService.getSmtpConfig();
+      passToSave = currentConfig?.pass || '';
+    }
+
+    if (!passToSave) {
+      res.status(400).json({ error: 'Senha de Aplicativo é obrigatória.' });
       return;
     }
 
     await settingsService.setMultiple({
       smtp_user: smtp_user.trim(),
-      smtp_pass: smtp_pass.trim(),
+      smtp_pass: passToSave.trim(),
     });
 
     res.json({ message: 'Configurações SMTP salvas com sucesso.' });
