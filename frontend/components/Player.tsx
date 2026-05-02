@@ -4,7 +4,7 @@ import { useParams } from 'react-router-dom';
 import { CloudSun, Rss, Monitor, Loader2, Home, ChevronRight, MoreHorizontal, ChevronLeft, Cloud, CloudRain, CloudLightning, Snowflake, Sun, Search, Map } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, AreaChart, Area, ComposedChart, Line } from 'recharts';
 import { motion, AnimatePresence } from 'motion/react';
-import { getDisplayBySlug, checkDeviceStatus, registerDevice, getDisplayById, getBroadcasts, heartbeatDevice, getDisplayVersion } from '../services/storage';
+import { getDisplayBySlug, checkDeviceStatus, registerDevice, getDisplayByIdPublic, getBroadcasts, heartbeatDevice, getDisplayVersion } from '../services/storage';
 import { Display, Page, WidgetType, Device, Broadcast } from '../types';
 
 const isYouTubeUrl = (url: string) => {
@@ -361,7 +361,7 @@ const Player: React.FC = () => {
 
   const loadDisplayById = async (displayId: string) => {
     try {
-      const data = await getDisplayById(displayId);
+      const data = await getDisplayByIdPublic(displayId);
       
       if (data) {
         if (data.updatedAt !== lastUpdateRef.current) {

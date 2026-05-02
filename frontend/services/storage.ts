@@ -114,6 +114,15 @@ export const getDisplayById = async (id: string): Promise<Display | undefined> =
   }
 };
 
+// Versão pública (sem auth) — usada pelo Player (TV) após vinculação
+export const getDisplayByIdPublic = async (id: string): Promise<Display | undefined> => {
+  try {
+    return await api.get<Display>(`/displays/player/${id}`);
+  } catch {
+    return undefined;
+  }
+};
+
 // Retorna apenas o timestamp de atualização — ultra-leve (~20 bytes)
 export const getDisplayVersion = async (slug: string): Promise<number | null> => {
   try {

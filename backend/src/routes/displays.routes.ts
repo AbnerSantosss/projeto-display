@@ -67,7 +67,24 @@ router.get('/slug/:slug', async (req: Request, res: Response): Promise<void> => 
   }
 });
 
-// GET /api/displays/:id
+// GET /api/displays/player/:id (PÚBLICO — Player busca display após vinculação)
+router.get('/player/:id', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const display = await displayService.getById(req.params.id as string);
+
+    if (!display) {
+      res.status(404).json({ error: 'Display não encontrado.' });
+      return;
+    }
+
+    res.json(display);
+  } catch (error: any) {
+    console.error('Erro ao buscar display para player:', error);
+    res.status(500).json({ error: 'Erro ao buscar display.' });
+  }
+});
+
+// GET /api/displays/:id (AUTENTICADO — Dashboard)
 router.get('/:id', authMiddleware, async (req: Request, res: Response): Promise<void> => {
   try {
     const display = await displayService.getById(req.params.id as string);
