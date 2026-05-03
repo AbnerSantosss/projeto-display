@@ -6,7 +6,7 @@ import {
   Save, Plus, Trash2, X,
   Image as ImageIcon, Type, CloudSun, Clock, Calendar, CalendarDays,
   Settings, Layers, Home, Move, Upload, Link as LinkIcon, CheckCircle2,
-  Maximize2, Film, Info, Loader2, MonitorPlay, Rss, Globe, Gift, Search, Palette, Map, Layout, MoveHorizontal
+  Maximize2, Film, Info, Loader2, MonitorPlay, Rss, Globe, Gift, Search, Palette, Map, Layout, MoveHorizontal, GripVertical
 } from 'lucide-react';
 import { getDisplays, saveDisplay, uploadMedia, deleteDisplay } from '../services/storage';
 import { Display, Page, WidgetType, LayoutItem } from '../types';
@@ -129,6 +129,10 @@ const Editor: React.FC = () => {
   const [isDeletingDisplay, setIsDeletingDisplay] = useState(false);
   const [showBgAnimModal, setShowBgAnimModal] = useState(false);
   const [mediaLibraryConfig, setMediaLibraryConfig] = useState<{ isOpen: boolean, onSelect: (url: string) => void, allowedTypes: 'image' | 'video' | 'all' } | null>(null);
+  
+  // Drag and Drop States for Layers
+  const [draggedLayerId, setDraggedLayerId] = useState<string | null>(null);
+  const [dragOverLayerId, setDragOverLayerId] = useState<string | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bgInputRef = useRef<HTMLInputElement>(null);
@@ -341,6 +345,65 @@ const Editor: React.FC = () => {
     currentPage.layout = [fullScreenWidget];
     
     setDisplay({ ...display, pages: updatedPages });
+  };
+
+  const handleLayerDragStart = (e: React.DragEvent<HTMLDivElement>, id: string) => {
+    e.dataTransfer.effectAllowed = 'move';
+    setDraggedLayerId(id);
+  };
+
+  const handleLayerDragOver = (e: React.DragEvent<HTMLDivElement>, id: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverLayerId !== id) {
+      setDragOverLayerId(id);
+    }
+  };
+
+  const handleLayerDragLeave = () => {
+    setDragOverLayerId(null);
+  };
+
+  const handleLayerDrop = (e: React.DragEvent<HTMLDivElement>, targetId: string) => {
+    e.preventDefault();
+    setDragOverLayerId(null);
+    
+    if (!draggedLayerId || draggedLayerId === targetId) return;
+
+    const updatedPages = [...display.pages];
+    const layout = [...updatedPages[activePageIdx].layout];
+    
+    // Sort layout by zIndex descending (top element first)
+    const sortedLayout = [...layout].sort((a, b) => (b.data.zIndex ?? 10) - (a.data.zIndex ?? 10));
+    
+    const draggedIdx = sortedLayout.findIndex(w => w.i === draggedLayerId);
+    const targetIdx = sortedLayout.findIndex(w => w.i === targetId);
+    
+    if (draggedIdx === -1 || targetIdx === -1) return;
+    
+    // Remove the dragged item
+    const [draggedItem] = sortedLayout.splice(draggedIdx, 1);
+    
+    // Insert at new position
+    sortedLayout.splice(targetIdx, 0, draggedItem);
+    
+    // Recalculate zIndex for all items
+    const newBaseZIndex = 10;
+    sortedLayout.forEach((item, index) => {
+      const layoutItem = layout.find(w => w.i === item.i);
+      if (layoutItem) {
+        layoutItem.data.zIndex = newBaseZIndex + (sortedLayout.length - 1 - index);
+      }
+    });
+
+    updatedPages[activePageIdx].layout = layout;
+    setDisplay({ ...display, pages: updatedPages });
+    setDraggedLayerId(null);
+  };
+
+  const handleLayerDragEnd = () => {
+    setDraggedLayerId(null);
+    setDragOverLayerId(null);
   };
 
   const currentWidget = activePage.layout.find(w => w.i === selectedWidget);
@@ -628,6 +691,88 @@ const Editor: React.FC = () => {
             </div>
           </div>
 
+          {/* Layers Sidebar Section */}
+          <div className="p-5 border-b border-slate-800">
+             <h3 className="text-[10px] font-black text-purple-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+               <Layers size={12} /> Camadas
+             </h3>
+             <div className="space-y-1">
+               {[...activePage.layout]
+                 .sort((a, b) => (b.data.zIndex ?? 10) - (a.data.zIndex ?? 10))
+                 .map((layer) => {
+                   const isSelected = selectedWidget === layer.i;
+                   const isDragging = draggedLayerId === layer.i;
+                   const isDragOver = dragOverLayerId === layer.i;
+
+                   const getIcon = (type: WidgetType) => {
+                     switch (type) {
+                       case WidgetType.IMAGE: return <ImageIcon size={14} />;
+                       case WidgetType.VIDEO: return <Film size={14} />;
+                       case WidgetType.TEXT: return <Type size={14} />;
+                       case WidgetType.CLOCK: return <Clock size={14} />;
+                       case WidgetType.CALENDAR: return <Calendar size={14} />;
+                       case WidgetType.WEATHER: return <CloudSun size={14} />;
+                       case WidgetType.FULL_INFO: return <Layout size={14} />;
+                       case WidgetType.RSS: return <Rss size={14} />;
+                       case WidgetType.IFRAME: return <Globe size={14} />;
+                       case WidgetType.GIF: return <Gift size={14} />;
+                       default: return <Layers size={14} />;
+                     }
+                   };
+
+                   const getName = (type: WidgetType) => {
+                     switch (type) {
+                       case WidgetType.IMAGE: return 'Imagem';
+                       case WidgetType.VIDEO: return 'Vídeo';
+                       case WidgetType.TEXT: return 'Texto';
+                       case WidgetType.CLOCK: return 'Relógio';
+                       case WidgetType.CALENDAR: return 'Agenda';
+                       case WidgetType.WEATHER: return 'Clima';
+                       case WidgetType.FULL_INFO: return 'Completo';
+                       case WidgetType.RSS: return 'Notícias';
+                       case WidgetType.IFRAME: return 'Website';
+                       case WidgetType.GIF: return 'GIF';
+                       default: return 'Widget';
+                     }
+                   };
+
+                   return (
+                     <div
+                       key={layer.i}
+                       draggable
+                       onDragStart={(e) => handleLayerDragStart(e, layer.i)}
+                       onDragOver={(e) => handleLayerDragOver(e, layer.i)}
+                       onDragLeave={handleLayerDragLeave}
+                       onDrop={(e) => handleLayerDrop(e, layer.i)}
+                       onDragEnd={handleLayerDragEnd}
+                       onClick={() => setSelectedWidget(layer.i)}
+                       className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-all border ${
+                         isSelected 
+                           ? 'bg-cyan-500/10 border-cyan-500/50 text-cyan-400' 
+                           : 'bg-slate-900 border-transparent hover:bg-slate-800 text-slate-300'
+                       } ${isDragging ? 'opacity-50' : 'opacity-100'} ${
+                         isDragOver ? 'border-t-2 border-t-cyan-500' : ''
+                       }`}
+                     >
+                       <div className="cursor-move text-slate-500 hover:text-slate-300">
+                         <GripVertical size={14} />
+                       </div>
+                       <div className="flex items-center justify-center w-6 h-6 rounded bg-slate-950/50 text-slate-400">
+                         {getIcon(layer.type)}
+                       </div>
+                       <span className="text-xs font-medium truncate flex-1">{getName(layer.type)}</span>
+                       {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-cyan-400"></div>}
+                     </div>
+                   );
+               })}
+               {activePage.layout.length === 0 && (
+                 <div className="text-center p-4 border border-dashed border-slate-800 rounded-lg text-slate-500 text-[10px]">
+                   Nenhuma camada nesta cena.
+                 </div>
+               )}
+             </div>
+             <p className="text-[8px] text-slate-500 mt-3 text-center">Arraste para reordenar (z-index)</p>
+          </div>
 
           <div className="p-5">
              <h3 className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-4 flex items-center gap-2">
