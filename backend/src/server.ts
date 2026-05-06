@@ -44,6 +44,13 @@ app.use('/uploads', express.static(uploadsPath, {
   etag: true,
 }));
 
+// Servir ícones/assets do sistema (logo, etc.)
+const iconsPath = path.resolve(__dirname, '../icones-do-sistema');
+app.use('/assets/system', express.static(iconsPath, {
+  maxAge: '7d',
+  etag: true,
+}));
+
 // Rotas
 app.use('/api/auth', authRoutes);
 app.use('/api/displays', displaysRoutes);

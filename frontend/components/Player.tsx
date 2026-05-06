@@ -432,7 +432,7 @@ const Player: React.FC = () => {
             <div className="w-24 h-24 bg-gradient-to-br from-slate-900 to-slate-950 rounded-2xl flex items-center justify-center border border-slate-800 shadow-[0_0_40px_rgba(34,211,238,0.15)] relative group p-4">
                <div className="absolute inset-0 bg-cyan-500/10 rounded-2xl blur-xl animate-pulse"></div>
                <img 
-                 src="https://certeirofc.com.br/wp-content/uploads/2026/02/Gemini_Generated_Image_opexl8opexl8opex_upscayl_10x_upscayl-lite-4x_1-removebg-preview.png" 
+                 src="/logo.png" 
                  alt="Logo" 
                  className="w-full h-full object-contain relative z-10 drop-shadow-[0_0_10px_rgba(34,211,238,0.5)]"
                />

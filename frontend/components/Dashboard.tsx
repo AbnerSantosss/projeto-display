@@ -46,6 +46,9 @@ const Dashboard: React.FC = () => {
   const [isDeleteDeviceModalOpen, setIsDeleteDeviceModalOpen] = useState(false);
   const [deviceToDelete, setDeviceToDelete] = useState<string | null>(null);
 
+  // Toast notification
+  const [toast, setToast] = useState<{ type: 'success' | 'error' | 'info'; title: string; message: string } | null>(null);
+
   const navigate = useNavigate();
 
   const refreshData = async () => {
@@ -191,10 +194,14 @@ const Dashboard: React.FC = () => {
   };
 
   // --- User Handlers ---
+  const showToast = (type: 'success' | 'error' | 'info', title: string, message: string) => {
+    setToast({ type, title, message });
+  };
+
   const handleInviteUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inviteEmail || !inviteEmail.includes('@')) {
-      alert('Informe um e-mail válido.');
+      showToast('error', 'E-mail inválido', 'Informe um e-mail válido para enviar o convite.');
       return;
     }
 
@@ -205,11 +212,12 @@ const Dashboard: React.FC = () => {
       const updatedUsers = await getUsers();
       setUsersList(updatedUsers);
 
+      const savedEmail = inviteEmail.trim();
       setInviteEmail('');
       setInviteRole('user');
-      alert(result.message || 'Convite enviado com sucesso!');
+      showToast('success', 'Convite enviado! ✉️', `As credenciais de acesso foram enviadas com sucesso para ${savedEmail}`);
     } catch (err: any) {
-      alert('Erro ao convidar: ' + err.message);
+      showToast('error', 'Falha ao enviar convite', err.message || 'Erro desconhecido. Tente novamente.');
     } finally {
       setUserActionLoading(false);
     }
@@ -317,7 +325,54 @@ const Dashboard: React.FC = () => {
   return (
     <div className="p-8 max-w-7xl mx-auto relative min-h-screen">
 
-      {/* BACKGROUND GLOW */}
+      {/* TOAST NOTIFICATION MODAL */}
+      {toast && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className={`bg-slate-900 border rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in duration-300 ${
+            toast.type === 'success' ? 'border-emerald-500/40 shadow-[0_0_50px_rgba(16,185,129,0.2)]' :
+            toast.type === 'error' ? 'border-rose-500/40 shadow-[0_0_50px_rgba(244,63,94,0.2)]' :
+            'border-cyan-500/40 shadow-[0_0_50px_rgba(34,211,238,0.2)]'
+          }`}>
+            {/* Top gradient bar */}
+            <div className={`h-1 ${
+              toast.type === 'success' ? 'bg-gradient-to-r from-emerald-600 via-emerald-400 to-cyan-400' :
+              toast.type === 'error' ? 'bg-gradient-to-r from-rose-600 via-rose-400 to-amber-400' :
+              'bg-gradient-to-r from-indigo-600 via-cyan-400 to-indigo-400'
+            }`}></div>
+            
+            <div className="p-6 text-center">
+              {/* Icon */}
+              <div className={`w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4 ${
+                toast.type === 'success' ? 'bg-emerald-500/10 text-emerald-400' :
+                toast.type === 'error' ? 'bg-rose-500/10 text-rose-400' :
+                'bg-cyan-500/10 text-cyan-400'
+              }`}>
+                {toast.type === 'success' ? <CheckCircle size={28} /> :
+                 toast.type === 'error' ? <XCircle size={28} /> :
+                 <AlertTriangle size={28} />}
+              </div>
+              
+              {/* Title */}
+              <h3 className="text-lg font-bold text-white mb-2">{toast.title}</h3>
+              
+              {/* Message */}
+              <p className="text-sm text-slate-400 leading-relaxed mb-6">{toast.message}</p>
+              
+              {/* Button */}
+              <button
+                onClick={() => setToast(null)}
+                className={`px-8 py-2.5 rounded-xl font-bold text-sm transition-all ${
+                  toast.type === 'success' ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-[0_0_20px_rgba(16,185,129,0.3)]' :
+                  toast.type === 'error' ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-[0_0_20px_rgba(244,63,94,0.3)]' :
+                  'bg-cyan-600 hover:bg-cyan-500 text-white shadow-[0_0_20px_rgba(34,211,238,0.3)]'
+                }`}
+              >
+                Entendido
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-900/20 rounded-full blur-[120px]"></div>
         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-cyan-900/20 rounded-full blur-[120px]"></div>
@@ -693,7 +748,7 @@ const Dashboard: React.FC = () => {
       <header className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-12 relative z-10 gap-6">
         <div className="flex items-center gap-4">
           <img
-            src="https://certeirofc.com.br/wp-content/uploads/2026/02/Gemini_Generated_Image_opexl8opexl8opex_upscayl_10x_upscayl-lite-4x_1-removebg-preview.png"
+            src="/logo.png"
             alt="Logo"
             className="w-16 h-16 object-contain drop-shadow-[0_0_10px_rgba(34,211,238,0.5)]"
           />

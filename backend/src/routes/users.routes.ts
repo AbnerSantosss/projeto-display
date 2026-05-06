@@ -43,7 +43,7 @@ router.post('/invite', authMiddleware, async (req: Request, res: Response): Prom
 // POST /api/users/:id/resend-invite (ADMIN — reenvia convite com nova senha)
 router.post('/:id/resend-invite', authMiddleware, adminMiddleware, async (req: Request, res: Response): Promise<void> => {
   try {
-    const result = await userService.resendInvite(req.params.id);
+    const result = await userService.resendInvite(req.params.id as string);
     res.json(result);
   } catch (error: any) {
     console.error('Erro ao reenviar convite:', error);
@@ -54,7 +54,7 @@ router.post('/:id/resend-invite', authMiddleware, adminMiddleware, async (req: R
 // POST /api/users/:id/send-reset (ADMIN — envia email de redefinição para o usuário)
 router.post('/:id/send-reset', authMiddleware, adminMiddleware, async (req: Request, res: Response): Promise<void> => {
   try {
-    const result = await userService.adminSendPasswordReset(req.params.id);
+    const result = await userService.adminSendPasswordReset(req.params.id as string);
     res.json(result);
   } catch (error: any) {
     console.error('Erro ao enviar reset de senha:', error);

@@ -572,7 +572,7 @@ const Editor: React.FC = () => {
           <div className="w-px h-6 bg-slate-800"></div>
           <div className="flex items-center gap-2">
             <img 
-              src="https://certeirofc.com.br/wp-content/uploads/2026/02/Gemini_Generated_Image_opexl8opexl8opex_upscayl_10x_upscayl-lite-4x_1-removebg-preview.png" 
+              src="/logo.png" 
               alt="Logo" 
               className="w-6 h-6 object-contain"
             />
