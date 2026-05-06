@@ -50,6 +50,10 @@ export interface WidgetData {
     titleColor?: string;
     titleSize?: string;
   };
+  imageConfig?: {
+    objectFit?: 'cover' | 'contain' | 'fill';
+    scale?: number;
+  };
   iframeConfig?: {
     interactive?: boolean;
     scale?: number;

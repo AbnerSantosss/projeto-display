@@ -1151,10 +1151,13 @@ const Editor: React.FC = () => {
                           <div className="w-full h-full flex items-center justify-center overflow-hidden">
                             <img 
                               src={w.data.url} 
-                              className="pointer-events-none select-none object-cover" 
+                              className="pointer-events-none select-none" 
                               style={{ 
-                                width: w.data.width ? `${w.data.width}px` : '100%', 
-                                height: w.data.height ? `${w.data.height}px` : '100%' 
+                                width: '100%', 
+                                height: '100%',
+                                objectFit: w.data.imageConfig?.objectFit || 'cover',
+                                transform: `scale(${w.data.imageConfig?.scale || 1})`,
+                                transformOrigin: 'center'
                               }} 
                             />
                           </div>
@@ -2251,28 +2254,36 @@ const Editor: React.FC = () => {
                     </button>
                     <div className="text-center text-[9px] text-slate-600 font-bold uppercase">- OU -</div>
                     <input type="text" placeholder="URL da imagem..." value={currentWidget.data.url} onChange={(e) => updateWidgetData(selectedWidget!, { url: e.target.value })} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-[10px] text-slate-200 outline-none focus:border-cyan-500" />
-                    
-                    <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-800">
+                    <div className="border-t border-slate-800 pt-4 mt-2 space-y-4">
+                      <label className="text-[9px] font-black text-slate-500 uppercase flex items-center gap-1"><Settings size={10} /> Enquadramento e Escala</label>
+                      
                       <div>
-                        <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Largura (px)</label>
-                        <input 
-                          type="number" 
-                          placeholder="Auto" 
-                          value={currentWidget.data.width || ''} 
-                          onChange={(e) => updateWidgetData(selectedWidget!, { width: e.target.value })} 
-                          className="w-full h-9 bg-slate-950 border border-slate-700 rounded px-2 text-xs text-slate-200 outline-none focus:border-cyan-500" 
-                        />
+                        <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Ajuste da Imagem</label>
+                        <select 
+                          className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-[10px] text-slate-200 outline-none focus:border-cyan-500 cursor-pointer"
+                          value={currentWidget.data.imageConfig?.objectFit || 'cover'}
+                          onChange={(e) => updateWidgetData(selectedWidget!, { imageConfig: { ...currentWidget.data.imageConfig, objectFit: e.target.value as any } })}
+                        >
+                          <option value="cover">Preencher (Corta bordas)</option>
+                          <option value="contain">Conter (Mostra inteira)</option>
+                          <option value="fill">Esticar (Ignora proporção)</option>
+                        </select>
                       </div>
+
                       <div>
-                        <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Altura (px)</label>
+                        <label className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Zoom (Escala)</label>
                         <input 
-                          type="number" 
-                          placeholder="Auto" 
-                          value={currentWidget.data.height || ''} 
-                          onChange={(e) => updateWidgetData(selectedWidget!, { height: e.target.value })} 
-                          className="w-full h-9 bg-slate-950 border border-slate-700 rounded px-2 text-xs text-slate-200 outline-none focus:border-cyan-500" 
+                          type="range" 
+                          min="0.1" max="3" step="0.1"
+                          className="w-full accent-cyan-500"
+                          value={currentWidget.data.imageConfig?.scale || 1}
+                          onChange={(e) => updateWidgetData(selectedWidget!, { imageConfig: { ...currentWidget.data.imageConfig, scale: parseFloat(e.target.value) } })}
                         />
+                        <div className="text-right text-[9px] font-mono text-cyan-400">{currentWidget.data.imageConfig?.scale || 1}x</div>
                       </div>
+                      <p className="text-[8px] text-slate-500 leading-relaxed mb-3">
+                        Utilize as alças (bordas do widget) no canvas para redimensionar a área e os controles acima para ajustar a imagem dentro dessa área.
+                      </p>
                     </div>
                   </div>
                 )}
