@@ -2,12 +2,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  Plus, Calendar, Clock, Monitor, Trash2, Edit3, Check, X, 
-  ChevronLeft, Loader2, Save, Zap, AlertCircle, Layout,
-  CalendarDays, Filter, Search, MoreVertical, Play, Pause, Settings
+  Plus, Calendar as CalendarIcon, Clock, Monitor, Trash2, Edit3, Check, X, 
+  ChevronLeft, Loader2, Save, Zap, AlertCircle, Layout as LayoutIcon,
+  CalendarDays, Filter, Search, MoreVertical, Play, Pause, Settings,
+  Image as ImageIcon, Type, CloudSun, Film, Rss, Globe, Gift, Layers, Maximize2
 } from 'lucide-react';
 import { getBroadcasts, saveBroadcast, deleteBroadcast, getDisplays, getCurrentUser, saveDisplay } from '../services/storage';
-import { Broadcast, Display, Page, User } from '../types';
+import { Broadcast, Display, Page, User, WidgetType, LayoutItem } from '../types';
 import SceneEditor from './SceneEditor';
 
 const Scheduler: React.FC = () => {
@@ -230,11 +231,11 @@ const Scheduler: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-8">
+    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
         
         {/* HEADER */}
-        <header className="flex justify-between items-center mb-12">
+        <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 md:mb-12 gap-4 md:gap-0">
           <div className="flex items-center gap-4">
             <button 
               onClick={() => isEditing ? setIsEditing(false) : navigate('/')}
@@ -243,18 +244,18 @@ const Scheduler: React.FC = () => {
               <ChevronLeft size={24} />
             </button>
             <div>
-              <h1 className="text-3xl font-black tracking-tight flex items-center gap-3">
-                <Calendar className="text-indigo-500" size={32} />
-                Central de <span className="text-cyan-400">Programação</span>
+              <h1 className="text-2xl md:text-3xl font-black tracking-tight flex items-center gap-2 md:gap-3">
+                <CalendarIcon className="text-indigo-500 shrink-0 w-6 h-6 md:w-8 md:h-8" />
+                <span>Central de <span className="text-cyan-400">Programação</span></span>
               </h1>
-              <p className="text-slate-500 text-sm font-medium">Agendamento mestre e distribuição de conteúdo</p>
+              <p className="text-slate-500 text-xs md:text-sm font-medium">Agendamento mestre e distribuição de conteúdo</p>
             </div>
           </div>
           
           {!isEditing && (
             <button 
               onClick={handleCreateNew}
-              className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-[0_0_20px_rgba(99,102,241,0.4)]"
+              className="w-full md:w-auto justify-center flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-[0_0_20px_rgba(99,102,241,0.4)]"
             >
               <Plus size={20} strokeWidth={3} /> Nova Programação
             </button>
@@ -262,158 +263,236 @@ const Scheduler: React.FC = () => {
         </header>
 
         {isEditing ? (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
-            
-            {/* FORMULÁRIO DE CONFIGURAÇÃO */}
-            <div className="lg:col-span-1 space-y-6">
-              <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 space-y-6">
-                <h2 className="text-lg font-bold flex items-center gap-2 text-indigo-400">
-                  <Settings className="w-5 h-5" /> Configurações
-                </h2>
-                
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-[10px] font-black text-slate-500 uppercase mb-1.5 tracking-wider">Nome da Programação</label>
-                    <input 
-                      type="text" 
-                      value={currentBroadcast?.name || ''}
-                      onChange={e => setCurrentBroadcast({...currentBroadcast!, name: e.target.value})}
-                      placeholder="Ex: Aviso de Feriado, Aniversariante..."
-                      className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-slate-100 placeholder:text-slate-700 focus:border-cyan-500 outline-none transition-all"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-4">
-                    <div>
-                      <label className="block text-[10px] font-black text-slate-500 uppercase mb-1.5 tracking-wider">Início da Exibição</label>
-                      <div className="relative">
-                        <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" size={16} />
-                        <input 
-                          type="datetime-local" 
-                          value={currentBroadcast?.start_time || ''}
-                          onChange={e => setCurrentBroadcast({...currentBroadcast!, start_time: e.target.value})}
-                          className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 pl-10 text-slate-100 focus:border-cyan-500 outline-none transition-all"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-black text-slate-500 uppercase mb-1.5 tracking-wider">Fim da Exibição</label>
-                      <div className="relative">
-                        <CalendarDays className={`absolute left-3 top-1/2 -translate-y-1/2 ${currentBroadcast?.is_permanent ? 'text-slate-800' : 'text-slate-600'}`} size={16} />
-                        <input 
-                          type="datetime-local" 
-                          disabled={currentBroadcast?.is_permanent}
-                          value={currentBroadcast?.is_permanent ? '' : (currentBroadcast?.end_time || '')}
-                          onChange={e => setCurrentBroadcast({...currentBroadcast!, end_time: e.target.value})}
-                          className={`w-full bg-slate-950 border border-slate-700 rounded-xl p-3 pl-10 text-slate-100 focus:border-cyan-500 outline-none transition-all ${currentBroadcast?.is_permanent ? 'opacity-30 cursor-not-allowed' : ''}`}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="pt-2">
-                      <label className="flex items-center gap-3 cursor-pointer group">
-                        <div className={`w-10 h-5 rounded-full relative transition-all ${currentBroadcast?.is_permanent ? 'bg-cyan-500' : 'bg-slate-700'}`}>
-                          <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all ${currentBroadcast?.is_permanent ? 'left-5.5' : 'left-0.5'}`}></div>
-                        </div>
-                        <span className="text-xs font-bold text-slate-400 group-hover:text-white transition-colors">Deixar permanente</span>
-                        <input 
-                          type="checkbox" 
-                          className="hidden"
-                          checked={currentBroadcast?.is_permanent || false}
-                          onChange={e => setCurrentBroadcast({...currentBroadcast!, is_permanent: e.target.checked})}
-                        />
-                      </label>
-                    </div>
-                  </div>
-
-                  <div className="pt-4 border-t border-slate-800">
-                    <label className="flex items-center gap-3 cursor-pointer group">
-                      <div className={`w-12 h-6 rounded-full relative transition-all ${currentBroadcast?.active ? 'bg-emerald-500' : 'bg-slate-700'}`}>
-                        <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${currentBroadcast?.active ? 'left-7' : 'left-1'}`}></div>
-                      </div>
-                      <span className="text-sm font-bold text-slate-300 group-hover:text-white transition-colors">Programação Ativa</span>
-                      <input 
-                        type="checkbox" 
-                        className="hidden"
-                        checked={currentBroadcast?.active || false}
-                        onChange={e => setCurrentBroadcast({...currentBroadcast!, active: e.target.checked})}
-                      />
-                    </label>
-                  </div>
+          <div className="fixed inset-0 z-50 bg-slate-950 flex flex-col animate-in fade-in duration-300">
+            {/* HEADER BAR */}
+            <header className="h-auto md:h-16 bg-slate-900 border-b border-slate-800 px-4 md:px-6 py-3 md:py-0 flex flex-col md:flex-row items-center justify-between z-30 shadow-md gap-3 md:gap-0">
+              <div className="flex items-center gap-4 w-full md:w-auto">
+                <button onClick={() => setIsEditing(false)} className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-cyan-400 transition-colors">
+                  <ChevronLeft size={20} />
+                </button>
+                <div className="w-px h-6 bg-slate-800"></div>
+                <div className="flex items-center gap-2">
+                  <img src="/logo.png" alt="Logo" className="w-6 h-6 object-contain" />
+                  <h1 className="font-bold text-slate-100 tracking-tight uppercase text-sm">
+                    Officecom<span className="text-cyan-400">Display</span> <span className="text-slate-600 mx-1">/</span> 
+                    <span className="text-purple-400">Programação</span>
+                  </h1>
                 </div>
               </div>
 
-              <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 space-y-4">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-lg font-bold flex items-center gap-2 text-cyan-400">
-                    <Monitor className="w-5 h-5" /> Selecionar Telas
-                  </h2>
-                  <div className="flex gap-2">
-                    <button onClick={selectAllDisplays} className="text-[10px] font-black text-indigo-400 hover:text-indigo-300 uppercase">Todas</button>
-                    <button onClick={clearDisplaySelection} className="text-[10px] font-black text-rose-400 hover:text-rose-300 uppercase">Limpar</button>
-                  </div>
-                </div>
-
-                <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                  {displays.map(display => (
-                    <div 
-                      key={display.id}
-                      onClick={() => toggleDisplaySelection(display.id)}
-                      className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${
-                        currentBroadcast?.display_ids?.includes(display.id)
-                        ? 'bg-cyan-500/10 border-cyan-500/50 text-cyan-100'
-                        : 'bg-slate-950/50 border-slate-800 text-slate-400 hover:border-slate-700'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <Monitor size={16} className={currentBroadcast?.display_ids?.includes(display.id) ? 'text-cyan-400' : 'text-slate-600'} />
-                        <span className="text-sm font-medium">{display.name}</span>
-                      </div>
-                      {currentBroadcast?.display_ids?.includes(display.id) && <Check size={16} className="text-cyan-400" />}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex gap-3">
+              <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+                <span className="text-[10px] font-black bg-purple-500/10 text-purple-400 border border-purple-500/20 px-3 py-1.5 rounded-full uppercase tracking-wider hidden sm:inline-flex items-center gap-1.5">
+                  <CalendarDays size={12} /> Modo Agendamento
+                </span>
                 <button 
                   onClick={() => setIsEditing(false)}
-                  className="flex-1 py-3 bg-slate-900 border border-slate-800 rounded-xl font-bold text-slate-400 hover:bg-slate-800 transition-all"
+                  className="bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-400 hover:text-white px-4 py-2 rounded-lg font-bold text-sm transition-all"
                 >
                   Cancelar
                 </button>
                 <button 
                   onClick={handleSave}
                   disabled={loading}
-                  className="flex-2 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl font-bold shadow-lg flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                  className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white px-6 py-2 rounded-lg font-bold text-sm flex items-center gap-2 transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] border border-white/10 active:scale-95 disabled:opacity-50"
                 >
-                  {loading ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
-                  Salvar Programação
+                  {loading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                  {loading ? 'SALVANDO...' : 'SALVAR'}
                 </button>
               </div>
-            </div>
+            </header>
 
-            {/* EDITOR DE CENA INTEGRADO */}
-            <div className="lg:col-span-2 space-y-6">
-              <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 h-full flex flex-col min-h-[600px]">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-lg font-bold flex items-center gap-2 text-purple-400">
-                    <Layout className="w-5 h-5" /> Designer de Conteúdo
-                  </h2>
-                  <div className="flex gap-2">
-                    <span className="text-[10px] font-black bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2 py-1 rounded uppercase">Modo Agendamento</span>
+            <div className="flex-1 flex overflow-hidden relative">
+              {/* LEFT SIDEBAR: Widgets + Scheduling Config */}
+              <aside className="w-72 bg-slate-900 border-r border-slate-800 overflow-y-auto z-[60] shadow-xl hidden md:block">
+                {/* Widgets Section */}
+                <div className="p-5 border-b border-slate-800">
+                  <h3 className="text-[10px] font-black text-cyan-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <Layers size={12} /> Widgets
+                  </h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { icon: <ImageIcon size={20} />, label: 'Imagem', type: 'IMAGE' },
+                      { icon: <Film size={20} />, label: 'Vídeo', type: 'VIDEO' },
+                      { icon: <Type size={20} />, label: 'Texto', type: 'TEXT' },
+                      { icon: <Clock size={20} />, label: 'Relógio', type: 'CLOCK' },
+                      { icon: <CloudSun size={20} />, label: 'Clima', type: 'WEATHER' },
+                      { icon: <LayoutIcon size={20} />, label: 'Completo', type: 'FULL_INFO' },
+                      { icon: <Rss size={20} />, label: 'Notícias', type: 'RSS' },
+                      { icon: <Globe size={20} />, label: 'Website', type: 'IFRAME' },
+                      { icon: <CalendarIcon size={20} />, label: 'Agenda', type: 'CALENDAR' },
+                      { icon: <Gift size={20} />, label: 'GIF', type: 'GIF' },
+                    ].map(w => (
+                      <button
+                        key={w.type}
+                        onClick={() => {
+                          const type = w.type as keyof typeof WidgetType;
+                          const newWidget: LayoutItem = {
+                            i: Math.random().toString(36).substr(2, 9),
+                            x: 18, y: 10,
+                            w: ['VIDEO','IFRAME','CALENDAR','GIF','FULL_INFO'].includes(w.type) ? 12 : (w.type === 'RSS' ? 12 : 8),
+                            h: ['VIDEO','IFRAME','CALENDAR','GIF','FULL_INFO'].includes(w.type) ? 8 : (w.type === 'RSS' ? 6 : 6),
+                            type: WidgetType[type],
+                            data: {
+                              content: w.type === 'TEXT' ? 'NOVO TEXTO' : '',
+                              url: w.type === 'IMAGE' ? 'https://picsum.photos/400/300' : (w.type === 'IFRAME' ? 'https://www.wikipedia.org' : (w.type === 'GIF' ? 'https://media.giphy.com/media/3o7TKSjRrfIPjei72E/giphy.gif' : '')),
+                              videoUrl: w.type === 'VIDEO' ? 'https://www.youtube.com/watch?v=YhYaHfpz6lo' : '',
+                              rssUrl: w.type === 'RSS' ? 'https://g1.globo.com/rss/g1/tecnologia/' : '',
+                              calendarId: w.type === 'CALENDAR' ? 'pt.brazilian#holiday@group.v.calendar.google.com' : '',
+                              city: ['WEATHER','CLOCK','FULL_INFO'].includes(w.type) ? 'Campina Grande' : '',
+                              model: w.type === 'WEATHER' ? 'simple' : (w.type === 'CLOCK' ? 'standard' : undefined),
+                              color: '#ffffff',
+                              fontSize: '2vw'
+                            }
+                          };
+                          const page = currentBroadcast?.page || { id: 'temp', order: 1, duration: 15, layout: [] };
+                          setCurrentBroadcast({...currentBroadcast!, page: { ...page, layout: [...page.layout, newWidget] }});
+                        }}
+                        className="flex flex-col items-center justify-center gap-1 p-2.5 min-w-[60px] bg-slate-800/50 hover:bg-indigo-600 hover:text-white text-slate-400 rounded-xl transition-all border border-slate-800 hover:border-indigo-500 group"
+                      >
+                        <div className="group-hover:scale-110 transition-transform">{w.icon}</div>
+                        <span className="text-[8px] font-black uppercase tracking-tighter">{w.label}</span>
+                      </button>
+                    ))}
                   </div>
                 </div>
 
-                <div className="flex-1">
-                   <SceneEditor 
-                     page={currentBroadcast?.page || { id: 'temp', order: 1, duration: 15, layout: [] }} 
-                     onChange={(newPage) => setCurrentBroadcast({...currentBroadcast!, page: newPage})}
-                   />
+                {/* Scheduling Config Section */}
+                <div className="p-5 border-b border-slate-800">
+                  <h3 className="text-[10px] font-black text-purple-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <CalendarDays size={12} /> Agendamento
+                  </h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-[9px] font-black text-slate-500 uppercase mb-1.5 tracking-wider">Nome da Programação</label>
+                      <input 
+                        type="text" 
+                        value={currentBroadcast?.name || ''}
+                        onChange={e => setCurrentBroadcast({...currentBroadcast!, name: e.target.value})}
+                        placeholder="Ex: Aniversariantes..."
+                        className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 placeholder:text-slate-700 focus:border-cyan-500 outline-none transition-all"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-black text-slate-500 uppercase mb-1.5 tracking-wider">Início da Exibição</label>
+                      <div className="relative">
+                        <CalendarDays className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-600" size={14} />
+                        <input 
+                          type="datetime-local" 
+                          value={currentBroadcast?.start_time || ''}
+                          onChange={e => setCurrentBroadcast({...currentBroadcast!, start_time: e.target.value})}
+                          className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 pl-9 text-xs text-slate-100 focus:border-cyan-500 outline-none transition-all"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-black text-slate-500 uppercase mb-1.5 tracking-wider">Fim da Exibição</label>
+                      <div className="relative">
+                        <CalendarDays className={`absolute left-2.5 top-1/2 -translate-y-1/2 ${currentBroadcast?.is_permanent ? 'text-slate-800' : 'text-slate-600'}`} size={14} />
+                        <input 
+                          type="datetime-local" 
+                          disabled={currentBroadcast?.is_permanent}
+                          value={currentBroadcast?.is_permanent ? '' : (currentBroadcast?.end_time || '')}
+                          onChange={e => setCurrentBroadcast({...currentBroadcast!, end_time: e.target.value})}
+                          className={`w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 pl-9 text-xs text-slate-100 focus:border-cyan-500 outline-none transition-all ${currentBroadcast?.is_permanent ? 'opacity-30 cursor-not-allowed' : ''}`}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-black text-slate-500 uppercase mb-1.5 tracking-wider">Duração da Exibição (Segundos)</label>
+                      <div className="flex items-center gap-2 bg-slate-950 border border-slate-700 rounded-lg p-1">
+                        <Clock size={14} className="ml-2 text-slate-600" />
+                        <input 
+                          type="number"
+                          min={5}
+                          value={currentBroadcast?.page?.duration || 15}
+                          onChange={e => {
+                            const page = currentBroadcast?.page || { id: 'temp', order: 1, duration: 15, layout: [] };
+                            setCurrentBroadcast({...currentBroadcast!, page: { ...page, duration: parseInt(e.target.value) || 5 }});
+                          }}
+                          className="w-full bg-transparent border-none p-1.5 text-sm font-bold text-slate-200 focus:ring-0 outline-none"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-black text-slate-500 uppercase mb-1.5 tracking-wider">Posição na Sequência</label>
+                      <div className="flex items-center gap-2 bg-slate-950 border border-slate-700 rounded-lg p-1">
+                        <Layers size={14} className="ml-2 text-slate-600" />
+                        <input 
+                          type="number"
+                          min={1}
+                          value={currentBroadcast?.page?.order || 1}
+                          onChange={e => {
+                            const page = currentBroadcast?.page || { id: 'temp', order: 1, duration: 15, layout: [] };
+                            setCurrentBroadcast({...currentBroadcast!, page: { ...page, order: parseInt(e.target.value) || 1 }});
+                          }}
+                          className="w-full bg-transparent border-none p-1.5 text-sm font-bold text-slate-200 focus:ring-0 outline-none"
+                        />
+                      </div>
+                      <p className="text-[8px] text-slate-500 mt-1.5">Define em qual posição a cena aparecerá na rotação das telas</p>
+                    </div>
+                    <label className="flex items-center gap-3 cursor-pointer group pt-2">
+                      <div className={`w-9 h-5 rounded-full relative transition-all ${currentBroadcast?.is_permanent ? 'bg-cyan-500' : 'bg-slate-700'}`}>
+                        <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all ${currentBroadcast?.is_permanent ? 'left-[18px]' : 'left-0.5'}`}></div>
+                      </div>
+                      <span className="text-[10px] font-bold text-slate-400 group-hover:text-white transition-colors uppercase">Permanente</span>
+                      <input type="checkbox" className="hidden" checked={currentBroadcast?.is_permanent || false} onChange={e => setCurrentBroadcast({...currentBroadcast!, is_permanent: e.target.checked})} />
+                    </label>
+                    <label className="flex items-center gap-3 cursor-pointer group">
+                      <div className={`w-9 h-5 rounded-full relative transition-all ${currentBroadcast?.active ? 'bg-emerald-500' : 'bg-slate-700'}`}>
+                        <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all ${currentBroadcast?.active ? 'left-[18px]' : 'left-0.5'}`}></div>
+                      </div>
+                      <span className="text-[10px] font-bold text-slate-400 group-hover:text-white transition-colors uppercase">Ativa</span>
+                      <input type="checkbox" className="hidden" checked={currentBroadcast?.active || false} onChange={e => setCurrentBroadcast({...currentBroadcast!, active: e.target.checked})} />
+                    </label>
+                  </div>
                 </div>
-              </div>
-            </div>
 
+                {/* Display Selection Section */}
+                <div className="p-5">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-[10px] font-black text-cyan-500 uppercase tracking-widest flex items-center gap-2">
+                      <Monitor size={12} /> Selecionar Telas
+                    </h3>
+                    <div className="flex gap-2">
+                      <button onClick={selectAllDisplays} className="text-[9px] font-black text-indigo-400 hover:text-indigo-300 uppercase">Todas</button>
+                      <button onClick={clearDisplaySelection} className="text-[9px] font-black text-rose-400 hover:text-rose-300 uppercase">Limpar</button>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    {displays.map(display => (
+                      <div 
+                        key={display.id}
+                        onClick={() => toggleDisplaySelection(display.id)}
+                        className={`flex items-center justify-between p-2.5 rounded-lg border cursor-pointer transition-all ${
+                          currentBroadcast?.display_ids?.includes(display.id)
+                          ? 'bg-cyan-500/10 border-cyan-500/50 text-cyan-100'
+                          : 'bg-slate-950/50 border-slate-800 text-slate-400 hover:border-slate-700'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <Monitor size={14} className={currentBroadcast?.display_ids?.includes(display.id) ? 'text-cyan-400' : 'text-slate-600'} />
+                          <span className="text-xs font-medium">{display.name}</span>
+                        </div>
+                        {currentBroadcast?.display_ids?.includes(display.id) && <Check size={14} className="text-cyan-400" />}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </aside>
+
+              {/* CANVAS AREA */}
+              <main className="flex-1 bg-slate-950 relative overflow-hidden flex items-center justify-center p-4 md:p-8">
+                <div className="absolute inset-0 z-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(#4f46e5 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
+                <div className="absolute top-4 left-4 flex items-center gap-2 text-slate-600 text-[10px] font-black uppercase tracking-widest bg-slate-900/80 px-3 py-1.5 rounded-full border border-slate-800 backdrop-blur-sm z-20">
+                  <Maximize2 size={12} className="text-purple-500" /> Canvas Programação 16:9
+                </div>
+                
+                <SceneEditor 
+                  page={currentBroadcast?.page || { id: 'temp', order: 1, duration: 15, layout: [] }} 
+                  onChange={(newPage) => setCurrentBroadcast({...currentBroadcast!, page: newPage})}
+                />
+              </main>
+            </div>
           </div>
         ) : (
           /* LISTA DE PROGRAMAÇÕES */
@@ -481,7 +560,7 @@ const Scheduler: React.FC = () => {
                             
                             <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-400">
                               <div className="flex items-center gap-2">
-                                <Calendar size={14} className="text-slate-600" />
+                                <CalendarIcon size={14} className="text-slate-600" />
                                 <span>{new Date(broadcast.start_time).toLocaleDateString()} - {new Date(broadcast.end_time).toLocaleDateString()}</span>
                               </div>
                               <div className="flex items-center gap-2">

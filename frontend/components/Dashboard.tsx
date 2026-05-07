@@ -46,6 +46,9 @@ const Dashboard: React.FC = () => {
   const [isDeleteDeviceModalOpen, setIsDeleteDeviceModalOpen] = useState(false);
   const [deviceToDelete, setDeviceToDelete] = useState<string | null>(null);
 
+  const [isDeleteUserModalOpen, setIsDeleteUserModalOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
+
   // Toast notification
   const [toast, setToast] = useState<{ type: 'success' | 'error' | 'info'; title: string; message: string } | null>(null);
 
@@ -223,18 +226,24 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const handleDeleteUser = async (id: string) => {
-    if (confirm('Remover este usuário? (O usuário perderá acesso ao painel)')) {
-      setUserActionLoading(true);
-      try {
-        await deleteUser(id);
-        const updatedUsers = await getUsers();
-        setUsersList(updatedUsers);
-      } catch (err: any) {
-        alert(err.message);
-      } finally {
-        setUserActionLoading(false);
-      }
+  const confirmDeleteUser = (u: User) => {
+    setUserToDelete(u);
+    setIsDeleteUserModalOpen(true);
+  };
+
+  const executeDeleteUser = async () => {
+    if (!userToDelete) return;
+    setUserActionLoading(true);
+    try {
+      await deleteUser(userToDelete.id);
+      const updatedUsers = await getUsers();
+      setUsersList(updatedUsers);
+      setIsDeleteUserModalOpen(false);
+      setUserToDelete(null);
+    } catch (err: any) {
+      alert(err.message || 'Erro ao excluir o usuário.');
+    } finally {
+      setUserActionLoading(false);
     }
   };
 
@@ -323,7 +332,7 @@ const Dashboard: React.FC = () => {
   };
 
   return (
-    <div className="p-8 max-w-7xl mx-auto relative min-h-screen">
+    <div className="p-4 md:p-8 max-w-7xl mx-auto relative min-h-screen">
 
       {/* TOAST NOTIFICATION MODAL */}
       {toast && (
@@ -527,7 +536,7 @@ const Dashboard: React.FC = () => {
                             </button>
                           )}
                           <button
-                            onClick={() => { if (confirm(`Tem certeza que deseja excluir ${u.email || u.username}?`)) handleDeleteUser(u.id); }}
+                            onClick={() => confirmDeleteUser(u)}
                             disabled={userActionLoading}
                             className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 rounded-lg border border-rose-500/20 transition-all disabled:opacity-50 ml-auto"
                           >
@@ -733,6 +742,46 @@ const Dashboard: React.FC = () => {
                   className="px-6 py-2.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold shadow-[0_0_20px_rgba(244,63,94,0.3)] transition-all flex items-center gap-2 text-sm"
                 >
                   <Trash2 size={16} /> Confirmar Exclusão
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL CONFIRMAÇÃO EXCLUSÃO USUÁRIO */}
+      {isDeleteUserModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-[0_0_50px_rgba(244,63,94,0.25)] w-full max-w-sm overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
+              <h3 className="font-bold text-lg text-slate-100 flex items-center gap-2">
+                <Trash2 className="text-rose-500" size={20} /> Excluir Usuário?
+              </h3>
+              <button onClick={() => setIsDeleteUserModalOpen(false)} className="text-slate-400 hover:text-rose-500 transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-6">
+              <p className="text-slate-300 text-sm mb-2 leading-relaxed">
+                Tem certeza que deseja excluir <strong>{userToDelete?.email || userToDelete?.username}</strong>?
+              </p>
+              <p className="text-rose-400/80 text-xs mb-6 font-medium">
+                (O usuário perderá o acesso ao painel permanentemente)
+              </p>
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => setIsDeleteUserModalOpen(false)}
+                  className="px-4 py-2.5 rounded-lg text-slate-400 font-bold hover:bg-slate-800 transition-colors text-sm"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={executeDeleteUser}
+                  disabled={userActionLoading}
+                  className="px-6 py-2.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold shadow-[0_0_20px_rgba(244,63,94,0.3)] transition-all flex items-center gap-2 text-sm disabled:opacity-50"
+                >
+                  {userActionLoading ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />} 
+                  Confirmar Exclusão
                 </button>
               </div>
             </div>

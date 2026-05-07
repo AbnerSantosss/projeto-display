@@ -130,6 +130,10 @@ const Editor: React.FC = () => {
   const [showBgAnimModal, setShowBgAnimModal] = useState(false);
   const [mediaLibraryConfig, setMediaLibraryConfig] = useState<{ isOpen: boolean, onSelect: (url: string) => void, allowedTypes: 'image' | 'video' | 'all' } | null>(null);
   
+  // Mobile sidebar states
+  const [showLeftSidebar, setShowLeftSidebar] = useState(false);
+  const [showRightSidebar, setShowRightSidebar] = useState(false);
+
   // Drag and Drop States for Layers
   const [draggedLayerId, setDraggedLayerId] = useState<string | null>(null);
   const [dragOverLayerId, setDragOverLayerId] = useState<string | null>(null);
@@ -564,8 +568,8 @@ const Editor: React.FC = () => {
       )}
 
       {/* Header */}
-      <header className="h-16 bg-slate-900 border-b border-slate-800 px-6 flex items-center justify-between z-30 shadow-md">
-        <div className="flex items-center gap-4">
+      <header className="h-auto md:h-16 bg-slate-900 border-b border-slate-800 px-4 md:px-6 py-3 md:py-0 flex flex-col md:flex-row items-center justify-between z-30 shadow-md gap-3 md:gap-0">
+        <div className="flex items-center gap-4 w-full md:w-auto justify-start">
           <button onClick={() => navigate('/')} className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-cyan-400 transition-colors">
             <Home size={20} />
           </button>
@@ -583,7 +587,7 @@ const Editor: React.FC = () => {
         </div>
 
         {/* Scene Selector */}
-        <div className="flex items-center gap-2 bg-slate-950 p-1.5 rounded-xl border border-slate-800 overflow-x-auto max-w-[40%] scrollbar-hide">
+        <div className="flex items-center gap-2 bg-slate-950 p-1.5 rounded-xl border border-slate-800 overflow-x-auto w-full md:max-w-[40%] scrollbar-hide">
           {display.pages.map((p, idx) => (
             <div 
               key={p.id} 
@@ -631,39 +635,58 @@ const Editor: React.FC = () => {
           </button>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button 
-            onClick={() => setShowDeleteDisplayModal(true)}
-            className="bg-slate-900 border border-slate-800 hover:bg-rose-500/10 text-slate-500 hover:text-rose-500 hover:border-rose-500/30 px-3 py-2 rounded-lg font-bold text-sm flex items-center gap-2 transition-all mr-2"
-            title="Excluir Tela"
-          >
-            <Trash2 size={16} />
-            <span className="hidden sm:inline">EXCLUIR</span>
-          </button>
+        <div className="flex items-center gap-2 w-full md:w-auto justify-between md:justify-end">
+          <div className="flex items-center gap-2 md:hidden">
+            <button 
+              onClick={() => setShowLeftSidebar(!showLeftSidebar)}
+              className={`px-3 py-2 rounded-lg transition-all border ${showLeftSidebar ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50' : 'bg-slate-900 border-slate-800 text-slate-500 hover:text-cyan-400'}`}
+              title="Widgets"
+            >
+              <Layers size={16} />
+            </button>
+            <button 
+              onClick={() => setShowRightSidebar(!showRightSidebar)}
+              className={`px-3 py-2 rounded-lg transition-all border ${showRightSidebar ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50' : 'bg-slate-900 border-slate-800 text-slate-500 hover:text-cyan-400'}`}
+              title="Configurações"
+            >
+              <Settings size={16} />
+            </button>
+          </div>
 
-          <button 
-            onClick={() => window.open(`/#/player/${display.slug || display.id}`, '_blank')}
-            className="bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-slate-700 hover:border-cyan-500/50 px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 transition-all"
-            title="Abrir Player em nova aba"
-          >
-            <Maximize2 size={16} />
-            <span className="hidden sm:inline">VISUALIZAR</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => setShowDeleteDisplayModal(true)}
+              className="bg-slate-900 border border-slate-800 hover:bg-rose-500/10 text-slate-500 hover:text-rose-500 hover:border-rose-500/30 px-3 py-2 rounded-lg font-bold text-sm flex items-center gap-2 transition-all mr-0 md:mr-2"
+              title="Excluir Tela"
+            >
+              <Trash2 size={16} />
+              <span className="hidden sm:inline">EXCLUIR</span>
+            </button>
 
-          <button 
-            onClick={handleSave} 
-            disabled={isSaving} 
-            className="bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white px-6 py-2 rounded-lg font-bold text-sm flex items-center gap-2 transition-all shadow-[0_0_15px_rgba(34,211,238,0.3)] border border-white/10 active:scale-95 whitespace-nowrap disabled:opacity-50"
-          >
-            {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} 
-            {isSaving ? 'SALVANDO...' : 'SALVAR'}
-          </button>
+            <button 
+              onClick={() => window.open(`/#/player/${display.slug || display.id}`, '_blank')}
+              className="bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-slate-700 hover:border-cyan-500/50 px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 transition-all"
+              title="Abrir Player em nova aba"
+            >
+              <Maximize2 size={16} />
+              <span className="hidden sm:inline">VISUALIZAR</span>
+            </button>
+
+            <button 
+              onClick={handleSave} 
+              disabled={isSaving} 
+              className="bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white px-6 py-2 rounded-lg font-bold text-sm flex items-center gap-2 transition-all shadow-[0_0_15px_rgba(34,211,238,0.3)] border border-white/10 active:scale-95 whitespace-nowrap disabled:opacity-50"
+            >
+              {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} 
+              {isSaving ? 'SALVANDO...' : 'SALVAR'}
+            </button>
+          </div>
         </div>
       </header>
 
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden relative">
         {/* Sidebar Left: Tools */}
-        <aside className="w-72 bg-slate-900 border-r border-slate-800 overflow-y-auto z-[60] shadow-xl">
+        <aside className={`absolute md:relative left-0 top-0 h-full w-72 bg-slate-900 border-r border-slate-800 overflow-y-auto z-[60] shadow-xl transition-transform duration-300 ease-in-out ${showLeftSidebar ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
           <div className="p-5 border-b border-slate-800">
              <h3 className="text-[10px] font-black text-cyan-500 uppercase tracking-widest mb-4 flex items-center gap-2">
                <Layers size={12} /> Widgets
@@ -1269,7 +1292,7 @@ const Editor: React.FC = () => {
         </main>
 
         {/* Sidebar Right: Properties */}
-        <aside className="w-80 bg-slate-900 border-l border-slate-800 p-6 overflow-y-auto z-[60] shadow-xl">
+        <aside className={`absolute md:relative right-0 top-0 h-full w-80 bg-slate-900 border-l border-slate-800 p-6 overflow-y-auto z-[60] shadow-xl transition-transform duration-300 ease-in-out ${showRightSidebar ? 'translate-x-0' : 'translate-x-full md:translate-x-0'}`}>
           {currentWidget ? (
             <div className="space-y-6 animate-in slide-in-from-right-4 duration-200">
               <div className="flex items-center justify-between border-b border-slate-800 pb-4">
