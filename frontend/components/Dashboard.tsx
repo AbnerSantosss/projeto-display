@@ -49,6 +49,11 @@ const Dashboard: React.FC = () => {
   const [isDeleteUserModalOpen, setIsDeleteUserModalOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
 
+  // Delete Display confirmation
+  const [isDeleteDisplayModalOpen, setIsDeleteDisplayModalOpen] = useState(false);
+  const [displayToDelete, setDisplayToDelete] = useState<Display | null>(null);
+  const [isDeletingDisplay, setIsDeletingDisplay] = useState(false);
+
   // Toast notification
   const [toast, setToast] = useState<{ type: 'success' | 'error' | 'info'; title: string; message: string } | null>(null);
 
@@ -187,12 +192,28 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: string, e: React.MouseEvent) => {
+  const handleDelete = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (confirm('Tem certeza que deseja excluir esta tela?')) {
-      setLoading(true);
-      await deleteDisplay(id);
+    const display = displays.find(d => d.id === id);
+    if (display) {
+      setDisplayToDelete(display);
+      setIsDeleteDisplayModalOpen(true);
+    }
+  };
+
+  const executeDeleteDisplay = async () => {
+    if (!displayToDelete) return;
+    setIsDeletingDisplay(true);
+    try {
+      await deleteDisplay(displayToDelete.id);
       await refreshData();
+      setIsDeleteDisplayModalOpen(false);
+      setDisplayToDelete(null);
+    } catch (error) {
+      console.error("Erro ao excluir tela:", error);
+      alert("Erro ao excluir tela. Tente novamente.");
+    } finally {
+      setIsDeletingDisplay(false);
     }
   };
 
@@ -782,6 +803,66 @@ const Dashboard: React.FC = () => {
                 >
                   {userActionLoading ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />} 
                   Confirmar Exclusão
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL CONFIRMAÇÃO EXCLUSÃO TELA (DISPLAY) */}
+      {isDeleteDisplayModalOpen && displayToDelete && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-rose-500/30 rounded-2xl shadow-[0_0_60px_rgba(244,63,94,0.3)] w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-300">
+            {/* Top warning bar */}
+            <div className="h-1.5 bg-gradient-to-r from-rose-600 via-red-500 to-amber-500"></div>
+            
+            <div className="p-6 text-center">
+              {/* Danger Icon */}
+              <div className="w-16 h-16 rounded-full bg-rose-500/10 flex items-center justify-center mx-auto mb-5 border-2 border-rose-500/30">
+                <AlertTriangle size={32} className="text-rose-500" />
+              </div>
+              
+              {/* Title */}
+              <h3 className="text-xl font-black text-white mb-3">Excluir Tela Permanentemente?</h3>
+              
+              {/* Display name badge */}
+              <div className="bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 mb-4 inline-block">
+                <div className="flex items-center gap-2 text-sm">
+                  <Monitor size={16} className="text-cyan-400" />
+                  <span className="font-bold text-white">{displayToDelete.name}</span>
+                </div>
+              </div>
+              
+              {/* Warning message */}
+              <div className="bg-rose-500/5 border border-rose-500/20 rounded-xl p-4 mb-6 text-left">
+                <p className="text-rose-300 text-sm font-bold mb-2 flex items-center gap-2">
+                  <AlertTriangle size={14} /> Atenção: esta ação é irreversível!
+                </p>
+                <ul className="text-slate-400 text-xs space-y-1.5 ml-5 list-disc">
+                  <li>Todas as <strong className="text-white">cenas</strong> desta tela serão removidas</li>
+                  <li>Todos os <strong className="text-white">widgets e configurações</strong> serão perdidos</li>
+                  <li>Dispositivos vinculados a esta tela ficarão <strong className="text-white">sem conteúdo</strong></li>
+                  <li>Esta ação <strong className="text-rose-400">NÃO pode ser desfeita</strong></li>
+                </ul>
+              </div>
+              
+              {/* Buttons */}
+              <div className="flex gap-3 justify-center">
+                <button
+                  onClick={() => { setIsDeleteDisplayModalOpen(false); setDisplayToDelete(null); }}
+                  disabled={isDeletingDisplay}
+                  className="px-6 py-3 rounded-xl text-slate-300 font-bold hover:bg-slate-800 transition-colors text-sm border border-slate-700 disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={executeDeleteDisplay}
+                  disabled={isDeletingDisplay}
+                  className="px-6 py-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold shadow-[0_0_25px_rgba(244,63,94,0.4)] transition-all flex items-center gap-2 text-sm disabled:opacity-50 border border-rose-500"
+                >
+                  {isDeletingDisplay ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                  {isDeletingDisplay ? 'Excluindo...' : 'Sim, Excluir Tela'}
                 </button>
               </div>
             </div>

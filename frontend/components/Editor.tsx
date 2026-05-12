@@ -8,7 +8,7 @@ import {
   Settings, Layers, Home, Move, Upload, Link as LinkIcon, CheckCircle2,
   Maximize2, Film, Info, Loader2, MonitorPlay, Rss, Globe, Gift, Search, Palette, Map, Layout, MoveHorizontal, GripVertical
 } from 'lucide-react';
-import { getDisplays, saveDisplay, uploadMedia, deleteDisplay } from '../services/storage';
+import { getDisplays, saveDisplay, uploadMedia } from '../services/storage';
 import { Display, Page, WidgetType, LayoutItem } from '../types';
 import { LiveClock, WeatherWidget, RssFeed, FullInfoWidget } from './Player';
 import { SizeInput } from './SizeInput';
@@ -125,8 +125,7 @@ const Editor: React.FC = () => {
   const [containerWidth, setContainerWidth] = useState(1200);
   const [pageToDelete, setPageToDelete] = useState<number | null>(null);
   const [isClearingScene, setIsClearingScene] = useState(false);
-  const [showDeleteDisplayModal, setShowDeleteDisplayModal] = useState(false);
-  const [isDeletingDisplay, setIsDeletingDisplay] = useState(false);
+
   const [showBgAnimModal, setShowBgAnimModal] = useState(false);
   const [mediaLibraryConfig, setMediaLibraryConfig] = useState<{ isOpen: boolean, onSelect: (url: string) => void, allowedTypes: 'image' | 'video' | 'all' } | null>(null);
   
@@ -191,18 +190,7 @@ const Editor: React.FC = () => {
     }
   }, [display]);
 
-  const handleDeleteDisplay = async () => {
-    if (!display) return;
-    setIsDeletingDisplay(true);
-    try {
-      await deleteDisplay(display.id);
-      navigate('/');
-    } catch (e) {
-      alert('Erro ao excluir tela.');
-      setIsDeletingDisplay(false);
-      setShowDeleteDisplayModal(false);
-    }
-  };
+
 
   useEffect(() => {
     console.log('Display updated:', display);
@@ -415,32 +403,7 @@ const Editor: React.FC = () => {
   return (
     <div className="h-screen flex flex-col bg-slate-950 overflow-hidden relative text-slate-200 font-sans">
       
-      {/* Delete Display Modal */}
-      {showDeleteDisplayModal && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-slate-700 p-6 rounded-xl shadow-2xl max-w-sm w-full mx-4 animate-in zoom-in-95 duration-200">
-            <h3 className="text-lg font-bold text-white mb-2">Excluir Tela Inteira?</h3>
-            <p className="text-slate-400 text-sm mb-6">Esta ação não pode ser desfeita. A tela <strong>{display.name}</strong> e todas as suas cenas serão apagadas permanentemente.</p>
-            <div className="flex justify-end gap-3">
-              <button 
-                onClick={() => setShowDeleteDisplayModal(false)}
-                disabled={isDeletingDisplay}
-                className="px-4 py-2 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-colors text-sm font-medium disabled:opacity-50"
-              >
-                Cancelar
-              </button>
-              <button 
-                onClick={handleDeleteDisplay}
-                disabled={isDeletingDisplay}
-                className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white transition-colors text-sm font-bold shadow-lg shadow-rose-900/20 flex items-center gap-2 disabled:opacity-50"
-              >
-                {isDeletingDisplay ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
-                {isDeletingDisplay ? 'Excluindo...' : 'Sim, Excluir Tela'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+
 
       {/* Background Animation Selection Modal */}
       {showBgAnimModal && (
@@ -654,14 +617,6 @@ const Editor: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            <button 
-              onClick={() => setShowDeleteDisplayModal(true)}
-              className="bg-slate-900 border border-slate-800 hover:bg-rose-500/10 text-slate-500 hover:text-rose-500 hover:border-rose-500/30 px-3 py-2 rounded-lg font-bold text-sm flex items-center gap-2 transition-all mr-0 md:mr-2"
-              title="Excluir Tela"
-            >
-              <Trash2 size={16} />
-              <span className="hidden sm:inline">EXCLUIR</span>
-            </button>
 
             <button 
               onClick={() => window.open(`/#/player/${display.slug || display.id}`, '_blank')}
