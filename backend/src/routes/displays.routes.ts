@@ -113,14 +113,14 @@ router.get('/:id', authMiddleware, async (req: Request, res: Response): Promise<
 // POST /api/displays (Cria ou atualiza)
 router.post('/', authMiddleware, async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id, name, slug, pages } = req.body;
+    const { id, name, slug, pages, coverImage } = req.body;
 
     if (!name || !slug) {
       res.status(400).json({ error: 'Nome e slug são obrigatórios.' });
       return;
     }
 
-    const display = await displayService.save({ id, name, slug, pages: pages || [] });
+    const display = await displayService.save({ id, name, slug, pages: pages || [], coverImage });
     res.json(display);
   } catch (error: any) {
     console.error('Erro ao salvar display:', error);

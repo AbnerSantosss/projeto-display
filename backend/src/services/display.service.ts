@@ -32,13 +32,14 @@ export class DisplayService {
     return displayRepository.findVersionBySlug(slug);
   }
 
-  async save(data: { id?: string; name: string; slug: string; pages: any }) {
+  async save(data: { id?: string; name: string; slug: string; pages: any; coverImage?: string | null }) {
     const pagesStr = typeof data.pages === 'string' ? data.pages : JSON.stringify(data.pages);
     return displayRepository.upsert({
       id: data.id,
       name: data.name,
       slug: data.slug,
       pages: pagesStr,
+      coverImage: data.coverImage,
     });
   }
 

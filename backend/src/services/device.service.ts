@@ -28,6 +28,10 @@ export class DeviceService {
     });
   }
 
+  async updateDisplayId(deviceId: string, displayId: string) {
+    return deviceRepository.update(deviceId, { displayId });
+  }
+
   async unlink(deviceId: string) {
     return deviceRepository.delete(deviceId);
   }

@@ -158,6 +158,7 @@ export const saveDisplay = async (display: Display): Promise<void> => {
     name: display.name,
     slug: display.slug,
     pages: display.pages,
+    coverImage: display.coverImage || null,
   });
 };
 
@@ -208,6 +209,10 @@ export const linkDevice = async (code: string, displayId: string, name: string):
 
 export const unlinkDevice = async (deviceId: string): Promise<void> => {
   await api.delete(`/devices/${deviceId}`);
+};
+
+export const updateDeviceDisplay = async (deviceId: string, displayId: string): Promise<void> => {
+  await api.patch(`/devices/${deviceId}/display`, { displayId });
 };
 
 export const heartbeatDevice = async (deviceId: string): Promise<void> => {

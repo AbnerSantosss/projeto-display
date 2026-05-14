@@ -101,6 +101,24 @@ router.patch('/:id/heartbeat', async (req: Request, res: Response): Promise<void
   }
 });
 
+// PATCH /api/devices/:id/display (AUTENTICADO — reatribuir display de um dispositivo)
+router.patch('/:id/display', authMiddleware, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { displayId } = req.body;
+
+    if (!displayId) {
+      res.status(400).json({ error: 'displayId é obrigatório.' });
+      return;
+    }
+
+    await deviceService.updateDisplayId(req.params.id as string, displayId);
+    res.json({ message: 'Display do dispositivo atualizado.' });
+  } catch (error: any) {
+    console.error('Erro ao atualizar display do dispositivo:', error);
+    res.status(500).json({ error: 'Erro ao atualizar display.' });
+  }
+});
+
 // DELETE /api/devices/:id
 router.delete('/:id', authMiddleware, async (req: Request, res: Response): Promise<void> => {
   try {

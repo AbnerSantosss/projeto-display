@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Monitor, Edit3, Copy, Trash2, Check, RefreshCw, ExternalLink, Loader2, X, Zap, LogOut, Users as UsersIcon, Shield, Tv, Link as LinkIcon, Unplug, Calendar, FileImage, Settings, Mail, CheckCircle, XCircle, Send, AlertTriangle, KeyRound, RotateCcw, MoreVertical, Pencil, Image as ImageIcon } from 'lucide-react';
-import { getDisplays, deleteDisplay, saveDisplay, getCurrentUser, logout, getUsers, saveUser, deleteUser, resendInvite, adminSendPasswordReset, getDevices, linkDevice, unlinkDevice, getSmtpSettings, saveSmtpSettings, testSmtpConnection, getSmtpStatus } from '../services/storage';
+import { getDisplays, deleteDisplay, saveDisplay, getCurrentUser, logout, getUsers, saveUser, deleteUser, resendInvite, adminSendPasswordReset, getDevices, linkDevice, unlinkDevice, updateDeviceDisplay, getSmtpSettings, saveSmtpSettings, testSmtpConnection, getSmtpStatus } from '../services/storage';
 import { Display, User, Device } from '../types';
 import { MediaLibrary } from './MediaLibrary';
 
@@ -65,6 +65,11 @@ const Dashboard: React.FC = () => {
 
   // Card dropdown menu
   const [openCardMenu, setOpenCardMenu] = useState<string | null>(null);
+
+  // Display Settings Modal
+  const [isDisplaySettingsOpen, setIsDisplaySettingsOpen] = useState(false);
+  const [settingsDisplay, setSettingsDisplay] = useState<Display | null>(null);
+  const [settingsDeviceDisplayMap, setSettingsDeviceDisplayMap] = useState<Record<string, string>>({});
 
   // Toast notification
   const [toast, setToast] = useState<{ type: 'success' | 'error' | 'info'; title: string; message: string } | null>(null);
@@ -279,11 +284,40 @@ const Dashboard: React.FC = () => {
       await refreshData();
       setIsCoverModalOpen(false);
       setDisplayForCover(null);
+      // Also update settings modal if open
+      if (settingsDisplay && settingsDisplay.id === displayForCover.id) {
+        setSettingsDisplay({ ...updated });
+      }
     } catch (error) {
       console.error('Erro ao definir capa:', error);
       alert('Erro ao definir capa.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // --- Display Settings Modal ---
+  const openDisplaySettings = (display: Display) => {
+    setSettingsDisplay(display);
+    // Pre-populate device-to-display map for devices linked to this display
+    const map: Record<string, string> = {};
+    devices.filter(d => d.status === 'linked' && d.display_id === display.id).forEach(d => {
+      map[d.id] = d.display_id || '';
+    });
+    setSettingsDeviceDisplayMap(map);
+    setIsDisplaySettingsOpen(true);
+    setOpenCardMenu(null);
+  };
+
+  const handleDeviceDisplayChange = async (deviceId: string, newDisplayId: string) => {
+    try {
+      await updateDeviceDisplay(deviceId, newDisplayId);
+      await refreshData();
+      // Update local map
+      setSettingsDeviceDisplayMap(prev => ({ ...prev, [deviceId]: newDisplayId }));
+    } catch (error) {
+      console.error('Erro ao reatribuir dispositivo:', error);
+      alert('Erro ao alterar a tela do dispositivo.');
     }
   };
 
@@ -297,6 +331,10 @@ const Dashboard: React.FC = () => {
       await refreshData();
       setIsCoverModalOpen(false);
       setDisplayForCover(null);
+      // Also update settings modal if open
+      if (settingsDisplay && settingsDisplay.id === target.id) {
+        setSettingsDisplay({ ...updated });
+      }
     } catch (error) {
       console.error('Erro ao remover capa:', error);
       alert('Erro ao remover capa.');
@@ -1010,6 +1048,125 @@ const Dashboard: React.FC = () => {
         />
       )}
 
+      {/* MODAL CONFIGURAÇÕES DO DISPLAY */}
+      {isDisplaySettingsOpen && settingsDisplay && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-[0_0_50px_rgba(34,211,238,0.25)] w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200 max-h-[90vh] flex flex-col">
+            {/* Header */}
+            <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
+              <h3 className="font-bold text-lg text-slate-100 flex items-center gap-2">
+                <Settings className="text-cyan-400" size={20} /> Configurações — {settingsDisplay.name}
+              </h3>
+              <button onClick={() => { setIsDisplaySettingsOpen(false); setSettingsDisplay(null); }} className="text-slate-400 hover:text-rose-500 transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6 overflow-y-auto">
+              {/* Seção: Imagem de Capa */}
+              <div>
+                <h4 className="text-[10px] font-black text-fuchsia-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                  <ImageIcon size={12} /> Imagem de Capa
+                </h4>
+                <div className="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden">
+                  {settingsDisplay.coverImage ? (
+                    <div className="relative group">
+                      <img src={settingsDisplay.coverImage} alt="Capa" className="w-full h-36 object-cover" />
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                        <button
+                          onClick={() => { setIsDisplaySettingsOpen(false); openCoverModal(settingsDisplay); }}
+                          className="px-4 py-2 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white rounded-lg text-xs font-bold flex items-center gap-2 transition-all border border-white/20"
+                        >
+                          <ImageIcon size={14} /> Trocar
+                        </button>
+                        <button
+                          onClick={() => handleRemoveCover(settingsDisplay)}
+                          className="px-4 py-2 bg-rose-500/20 hover:bg-rose-500/30 backdrop-blur-sm text-rose-300 rounded-lg text-xs font-bold flex items-center gap-2 transition-all border border-rose-500/30"
+                        >
+                          <X size={14} /> Remover
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="h-36 flex flex-col items-center justify-center gap-3 text-slate-500">
+                      <Monitor size={32} className="text-slate-700" />
+                      <button
+                        onClick={() => { setIsDisplaySettingsOpen(false); openCoverModal(settingsDisplay); }}
+                        className="px-4 py-2 bg-fuchsia-500/10 hover:bg-fuchsia-500/20 text-fuchsia-400 rounded-lg text-xs font-bold flex items-center gap-2 transition-all border border-fuchsia-500/30"
+                      >
+                        <ImageIcon size={14} /> Adicionar Capa
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Seção: TVs Vinculadas */}
+              <div>
+                <h4 className="text-[10px] font-black text-cyan-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                  <Tv size={12} /> TVs Vinculadas a este Display
+                </h4>
+                {(() => {
+                  const linkedDevices = devices.filter(d => d.status === 'linked' && d.display_id === settingsDisplay.id);
+                  if (linkedDevices.length === 0) {
+                    return (
+                      <div className="text-center py-6 border border-dashed border-slate-800 rounded-xl text-slate-500">
+                        <Tv size={24} className="mx-auto mb-2 text-slate-700" />
+                        <p className="text-xs">Nenhuma TV vinculada a este display.</p>
+                        <p className="text-[10px] text-slate-600 mt-1">Use o botão "Vincular TV" no painel principal.</p>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div className="space-y-3">
+                      {linkedDevices.map(device => {
+                        const isOnline = (Date.now() - device.last_seen) < 60000;
+                        return (
+                          <div key={device.id} className="bg-slate-950 border border-slate-800 rounded-xl p-4">
+                            <div className="flex items-center gap-3 mb-3">
+                              <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${isOnline ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-slate-700'}`}></div>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-bold text-sm text-white truncate">{device.name || 'Sem nome'}</p>
+                                <p className="text-[10px] text-slate-500">{isOnline ? 'Online agora' : 'Offline'}</p>
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-[9px] font-black text-slate-500 uppercase mb-1.5 tracking-wider">Exibindo Conteúdo de:</label>
+                              <select
+                                value={settingsDeviceDisplayMap[device.id] || device.display_id || ''}
+                                onChange={(e) => handleDeviceDisplayChange(device.id, e.target.value)}
+                                className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white appearance-none cursor-pointer focus:border-cyan-500 outline-none transition-all"
+                              >
+                                {displays.map(d => (
+                                  <option key={d.id} value={d.id}>{d.name}</option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Seção: Renomear */}
+              <div>
+                <h4 className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                  <Pencil size={12} /> Renomear
+                </h4>
+                <button
+                  onClick={() => { setIsDisplaySettingsOpen(false); openRenameModal(settingsDisplay); }}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800 hover:border-indigo-500/50 rounded-xl text-sm font-bold transition-all"
+                >
+                  <Pencil size={14} /> Renomear Display
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {isMediaLibraryOpen && (
         <MediaLibrary onClose={() => setIsMediaLibraryOpen(false)} />
       )}
@@ -1168,6 +1325,15 @@ const Dashboard: React.FC = () => {
                     </div>
                   )}
                 </div>
+
+                {/* Gear settings icon (top-left, below status) */}
+                <button
+                  onClick={(e) => { e.stopPropagation(); openDisplaySettings(display); }}
+                  className="absolute bottom-3 left-3 z-20 p-2 bg-slate-900/80 rounded-full text-slate-400 hover:text-cyan-400 hover:bg-slate-800 transition-all backdrop-blur-sm border border-slate-800 hover:border-cyan-500/50 shadow-lg opacity-0 group-hover:opacity-100"
+                  title="Configurações do Display"
+                >
+                  <Settings size={16} />
+                </button>
               </div>
 
               <div className="p-6 relative">

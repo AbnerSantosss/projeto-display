@@ -21,19 +21,21 @@ export class DisplayRepository {
     });
   }
 
-  async upsert(data: { id?: string; name: string; slug: string; pages: string }) {
+  async upsert(data: { id?: string; name: string; slug: string; pages: string; coverImage?: string | null }) {
     return prisma.display.upsert({
       where: { id: data.id || '' },
       update: {
         name: data.name,
         slug: data.slug,
         pages: data.pages,
+        coverImage: data.coverImage ?? undefined,
       },
       create: {
         id: data.id,
         name: data.name,
         slug: data.slug,
         pages: data.pages,
+        coverImage: data.coverImage ?? null,
       },
     });
   }

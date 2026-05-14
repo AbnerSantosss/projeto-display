@@ -550,11 +550,11 @@ const Editor: React.FC = () => {
         </div>
 
         {/* Scene Selector */}
-        <div className="flex items-center gap-2 bg-slate-950 p-1.5 rounded-xl border border-slate-800 overflow-x-auto w-full md:max-w-[40%] scrollbar-hide">
+        <div className="flex items-center gap-2 bg-slate-950 p-1.5 rounded-xl border border-slate-800 overflow-x-auto w-full md:max-w-[40%] scrollbar-hide flex-nowrap">
           {display.pages.map((p, idx) => (
             <div 
               key={p.id} 
-              className={`flex items-center rounded-lg border transition-all flex-shrink-0 ${
+              className={`flex items-center rounded-lg border transition-all flex-shrink-0 min-w-max ${
                 activePageIdx === idx 
                 ? 'bg-indigo-600 border-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.4)]' 
                 : 'border-slate-800 hover:border-slate-700 bg-slate-900'
@@ -577,14 +577,14 @@ const Editor: React.FC = () => {
                     e.stopPropagation(); 
                     removePage(idx); 
                   }}
-                  className={`flex-shrink-0 w-7 h-7 flex items-center justify-center transition-colors border-l ${
+                  className={`flex-shrink-0 w-8 h-8 flex items-center justify-center transition-colors border-l ${
                     activePageIdx === idx 
                     ? 'border-indigo-500 text-indigo-200 hover:bg-indigo-700 hover:text-white' 
                     : 'border-slate-800 text-slate-600 hover:bg-rose-500/10 hover:text-rose-500'
                   }`}
                   title="Excluir Cena"
                 >
-                  <X size={12} strokeWidth={3} />
+                  <X size={14} strokeWidth={3} />
                 </button>
               )}
             </div>
