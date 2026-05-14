@@ -22,13 +22,16 @@ export class DisplayRepository {
   }
 
   async upsert(data: { id?: string; name: string; slug: string; pages: string; coverImage?: string | null }) {
+    // Determine coverImage value: null clears it, string sets it, undefined means not provided (keep current)
+    const coverImageValue = data.coverImage !== undefined ? data.coverImage : undefined;
+
     return prisma.display.upsert({
       where: { id: data.id || '' },
       update: {
         name: data.name,
         slug: data.slug,
         pages: data.pages,
-        coverImage: data.coverImage ?? undefined,
+        coverImage: coverImageValue,
       },
       create: {
         id: data.id,

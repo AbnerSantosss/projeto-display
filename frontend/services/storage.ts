@@ -158,7 +158,7 @@ export const saveDisplay = async (display: Display): Promise<void> => {
     name: display.name,
     slug: display.slug,
     pages: display.pages,
-    coverImage: display.coverImage || null,
+    coverImage: display.coverImage && display.coverImage.trim() !== '' ? display.coverImage : null,
   });
 };
 
