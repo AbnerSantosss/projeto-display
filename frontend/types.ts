@@ -142,6 +142,7 @@ export interface Display {
   slug: string;
   pages: Page[];
   updatedAt: number;
+  coverImage?: string;
 }
 
 export interface User {

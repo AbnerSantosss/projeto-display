@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Monitor, Edit3, Copy, Trash2, Check, RefreshCw, ExternalLink, Loader2, X, Zap, LogOut, Users as UsersIcon, Shield, Tv, Link as LinkIcon, Unplug, Calendar, FileImage, Settings, Mail, CheckCircle, XCircle, Send, AlertTriangle, KeyRound, RotateCcw, MoreVertical } from 'lucide-react';
+import { Plus, Monitor, Edit3, Copy, Trash2, Check, RefreshCw, ExternalLink, Loader2, X, Zap, LogOut, Users as UsersIcon, Shield, Tv, Link as LinkIcon, Unplug, Calendar, FileImage, Settings, Mail, CheckCircle, XCircle, Send, AlertTriangle, KeyRound, RotateCcw, MoreVertical, Pencil, Image as ImageIcon } from 'lucide-react';
 import { getDisplays, deleteDisplay, saveDisplay, getCurrentUser, logout, getUsers, saveUser, deleteUser, resendInvite, adminSendPasswordReset, getDevices, linkDevice, unlinkDevice, getSmtpSettings, saveSmtpSettings, testSmtpConnection, getSmtpStatus } from '../services/storage';
 import { Display, User, Device } from '../types';
 import { MediaLibrary } from './MediaLibrary';
@@ -54,6 +54,18 @@ const Dashboard: React.FC = () => {
   const [displayToDelete, setDisplayToDelete] = useState<Display | null>(null);
   const [isDeletingDisplay, setIsDeletingDisplay] = useState(false);
 
+  // Rename Display
+  const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
+  const [displayToRename, setDisplayToRename] = useState<Display | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+
+  // Cover Image
+  const [isCoverModalOpen, setIsCoverModalOpen] = useState(false);
+  const [displayForCover, setDisplayForCover] = useState<Display | null>(null);
+
+  // Card dropdown menu
+  const [openCardMenu, setOpenCardMenu] = useState<string | null>(null);
+
   // Toast notification
   const [toast, setToast] = useState<{ type: 'success' | 'error' | 'info'; title: string; message: string } | null>(null);
 
@@ -99,6 +111,14 @@ const Dashboard: React.FC = () => {
 
     return () => clearInterval(interval);
   }, []);
+
+  // Fechar dropdown do card ao clicar fora
+  React.useEffect(() => {
+    if (!openCardMenu) return;
+    const handleClickOutside = () => setOpenCardMenu(null);
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [openCardMenu]);
 
   // --- Auth Handlers ---
   const handleLogout = async () => {
@@ -214,6 +234,74 @@ const Dashboard: React.FC = () => {
       alert("Erro ao excluir tela. Tente novamente.");
     } finally {
       setIsDeletingDisplay(false);
+    }
+  };
+
+  // --- Rename Display ---
+  const openRenameModal = (display: Display) => {
+    setDisplayToRename(display);
+    setRenameValue(display.name);
+    setIsRenameModalOpen(true);
+    setOpenCardMenu(null);
+  };
+
+  const handleRenameDisplay = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!displayToRename || !renameValue.trim()) return;
+    setLoading(true);
+    try {
+      const updated: Display = { ...displayToRename, name: renameValue.trim(), updatedAt: Date.now() };
+      await saveDisplay(updated);
+      await refreshData();
+      setIsRenameModalOpen(false);
+      setDisplayToRename(null);
+    } catch (error) {
+      console.error('Erro ao renomear tela:', error);
+      alert('Erro ao renomear tela.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // --- Cover Image ---
+  const openCoverModal = (display: Display) => {
+    setDisplayForCover(display);
+    setIsCoverModalOpen(true);
+    setOpenCardMenu(null);
+  };
+
+  const handleCoverSelect = async (url: string) => {
+    if (!displayForCover) return;
+    setLoading(true);
+    try {
+      const updated: Display = { ...displayForCover, coverImage: url, updatedAt: Date.now() };
+      await saveDisplay(updated);
+      await refreshData();
+      setIsCoverModalOpen(false);
+      setDisplayForCover(null);
+    } catch (error) {
+      console.error('Erro ao definir capa:', error);
+      alert('Erro ao definir capa.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRemoveCover = async (display?: Display) => {
+    const target = display || displayForCover;
+    if (!target) return;
+    setLoading(true);
+    try {
+      const updated: Display = { ...target, coverImage: '', updatedAt: Date.now() };
+      await saveDisplay(updated);
+      await refreshData();
+      setIsCoverModalOpen(false);
+      setDisplayForCover(null);
+    } catch (error) {
+      console.error('Erro ao remover capa:', error);
+      alert('Erro ao remover capa.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -870,6 +958,58 @@ const Dashboard: React.FC = () => {
         </div>
       )}
 
+      {/* MODAL RENOMEAR TELA */}
+      {isRenameModalOpen && displayToRename && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-[0_0_50px_rgba(34,211,238,0.25)] w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
+              <h3 className="font-bold text-lg text-slate-100 flex items-center gap-2">
+                <Pencil className="text-cyan-400" size={20} /> Renomear Tela
+              </h3>
+              <button onClick={() => { setIsRenameModalOpen(false); setDisplayToRename(null); }} className="text-slate-400 hover:text-rose-500 transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            <form onSubmit={handleRenameDisplay} className="p-6">
+              <label className="block text-sm font-bold text-slate-400 mb-2 uppercase tracking-wider">Novo Nome</label>
+              <input
+                autoFocus
+                type="text"
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value)}
+                placeholder="Ex: Recepção, Vitrine..."
+                className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-slate-100 placeholder:text-slate-600 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-all font-medium"
+              />
+              <div className="mt-8 flex gap-3 justify-end">
+                <button
+                  type="button"
+                  onClick={() => { setIsRenameModalOpen(false); setDisplayToRename(null); }}
+                  className="px-4 py-2.5 rounded-lg text-slate-400 font-bold hover:bg-slate-800 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={!renameValue.trim() || renameValue.trim() === displayToRename.name}
+                  className="px-6 py-2.5 rounded-lg bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-bold shadow-[0_0_20px_rgba(34,211,238,0.3)] transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Check size={16} /> Salvar Nome
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL ALTERAR CAPA */}
+      {isCoverModalOpen && displayForCover && (
+        <MediaLibrary
+          onClose={() => { setIsCoverModalOpen(false); setDisplayForCover(null); }}
+          onSelect={(url) => handleCoverSelect(url)}
+          allowedTypes="image"
+        />
+      )}
+
       {isMediaLibraryOpen && (
         <MediaLibrary onClose={() => setIsMediaLibraryOpen(false)} />
       )}
@@ -966,24 +1106,64 @@ const Dashboard: React.FC = () => {
             <div key={display.id} className="bg-slate-900/50 backdrop-blur-md border border-slate-800 rounded-2xl overflow-hidden shadow-lg hover:shadow-[0_0_30px_rgba(34,211,238,0.15)] hover:border-cyan-500/50 transition-all group relative">
               <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-cyan-500/5 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"></div>
 
-              <button
-                onClick={(e) => handleDelete(display.id, e)}
-                className="absolute top-3 right-3 p-2 bg-slate-900/80 rounded-full text-slate-400 hover:text-rose-500 hover:bg-rose-500/20 opacity-50 hover:opacity-100 transition-all z-20 backdrop-blur-sm border border-slate-800 hover:border-rose-500/30 shadow-lg"
-                title="Excluir Tela"
-              >
-                <Trash2 size={16} />
-              </button>
+              {/* 3-dot menu (top-right) */}
+              <div className="absolute top-3 right-3 z-20">
+                <button
+                  onClick={(e) => { e.stopPropagation(); setOpenCardMenu(openCardMenu === display.id ? null : display.id); }}
+                  className="p-2 bg-slate-900/80 rounded-full text-slate-400 hover:text-white hover:bg-slate-800 transition-all backdrop-blur-sm border border-slate-800 hover:border-slate-600 shadow-lg"
+                  title="Opções"
+                >
+                  <MoreVertical size={16} />
+                </button>
+                {/* Dropdown menu */}
+                {openCardMenu === display.id && (
+                  <div className="absolute top-10 right-0 w-48 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 py-1">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); openRenameModal(display); }}
+                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors text-left"
+                    >
+                      <Pencil size={14} className="text-cyan-400" /> Renomear
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); openCoverModal(display); }}
+                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors text-left"
+                    >
+                      <ImageIcon size={14} className="text-fuchsia-400" /> Alterar Capa
+                    </button>
+                    {display.coverImage && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setOpenCardMenu(null); handleRemoveCover(display); }}
+                        className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-amber-400 hover:bg-amber-500/10 hover:text-amber-300 transition-colors text-left"
+                      >
+                        <X size={14} /> Remover Capa
+                      </button>
+                    )}
+                    <div className="border-t border-slate-800 my-1"></div>
+                    <button
+                      onClick={(e) => handleDelete(display.id, e)}
+                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 transition-colors text-left"
+                    >
+                      <Trash2 size={14} /> Excluir Tela
+                    </button>
+                  </div>
+                )}
+              </div>
 
-              <div className="h-40 bg-slate-950 flex items-center justify-center border-b border-slate-800 relative group-hover:bg-slate-900 transition-colors">
-                <Monitor size={56} className="text-slate-700 group-hover:text-cyan-400 transition-colors drop-shadow-[0_0_10px_rgba(34,211,238,0.2)]" />
+              {/* Cover / Thumbnail area */}
+              <div className="h-40 bg-slate-950 flex items-center justify-center border-b border-slate-800 relative group-hover:bg-slate-900 transition-colors overflow-hidden">
+                {display.coverImage ? (
+                  <img src={display.coverImage} alt={display.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                ) : (
+                  <Monitor size={56} className="text-slate-700 group-hover:text-cyan-400 transition-colors drop-shadow-[0_0_10px_rgba(34,211,238,0.2)]" />
+                )}
 
                 <div className="absolute top-4 left-4 flex gap-2">
                   {devices.filter(d => d.display_id === display.id).some(d => (Date.now() - d.last_seen) < 60000) ? (
-                    <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-black px-2 py-1 rounded flex items-center gap-1">
+                    <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-black px-2 py-1 rounded flex items-center gap-1 backdrop-blur-sm">
                       <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></div> ONLINE
                     </div>
                   ) : (
-                    <div className="bg-slate-500/10 border border-slate-500/20 text-slate-400 text-[10px] font-black px-2 py-1 rounded flex items-center gap-1">
+                    <div className="bg-slate-500/10 border border-slate-500/20 text-slate-400 text-[10px] font-black px-2 py-1 rounded flex items-center gap-1 backdrop-blur-sm">
                       <div className="w-1.5 h-1.5 rounded-full bg-slate-400"></div> OFFLINE
                     </div>
                   )}

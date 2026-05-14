@@ -554,7 +554,7 @@ const Editor: React.FC = () => {
           {display.pages.map((p, idx) => (
             <div 
               key={p.id} 
-              className={`flex items-center rounded-lg border transition-all overflow-hidden ${
+              className={`flex items-center rounded-lg border transition-all flex-shrink-0 ${
                 activePageIdx === idx 
                 ? 'bg-indigo-600 border-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.4)]' 
                 : 'border-slate-800 hover:border-slate-700 bg-slate-900'
@@ -577,7 +577,7 @@ const Editor: React.FC = () => {
                     e.stopPropagation(); 
                     removePage(idx); 
                   }}
-                  className={`px-2 py-1.5 transition-colors border-l ${
+                  className={`flex-shrink-0 w-7 h-7 flex items-center justify-center transition-colors border-l ${
                     activePageIdx === idx 
                     ? 'border-indigo-500 text-indigo-200 hover:bg-indigo-700 hover:text-white' 
                     : 'border-slate-800 text-slate-600 hover:bg-rose-500/10 hover:text-rose-500'
